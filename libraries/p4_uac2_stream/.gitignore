@@ -1,0 +1,13 @@
+# Keep this component export source-only.
+**/build/
+**/managed_components/
+**/sdkconfig
+**/sdkconfig.old
+**/dependencies.lock
+**/__pycache__/
+*.pyc
+*.wav
+*.bin
+*.elf
+*.map
+*.log

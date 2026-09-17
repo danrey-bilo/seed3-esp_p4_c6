@@ -1,0 +1,27 @@
+{
+  "version": "0.1.0",
+  "snapshot_date": "2026-09-17",
+  "source_component": "ESP32-P4-WIFI6-Touch-LCD-7B/components/p4_uac2_stream",
+  "sdk": "ESP-IDF 5.5.5",
+  "dependency": "espressif/tinyusb 0.19.0~3",
+  "hardware_tested": "ESP32-P4 rev1.3, USB HS, Windows usbaudio2.sys, Seed3 SPI test tones",
+  "tested_bridge_merged_bin_sha256": "fc45387f9301812a3b13fbb7a92590c03a6ee6cffe381ae508c1133d7d07d76b",
+  "hash_convention": "SHA-256 of UTF-8 source with CRLF normalized to LF, including final newline",
+  "source_sha256_lf_utf8": {
+    "CMakeLists.txt": "ff8ae6157ff0d4f2aa408c3e1c25dc9d8e0560c7b85b87346dd94a807ec66995",
+    "idf_component.yml": "869b57d9ede6e02f31c3609597c1eaaec10b2208f3fee8a2446121d3edd848a7",
+    "p4_uac2_stream.c": "15409841613319aff6442b1faf9b330ca1a67378f8a17f962f330ca00bbd2ffa",
+    "usb_descriptors.c": "7a0de1b736ef8ad54605bf7f34cd6c29ba9a9f5582a043fdd8fdaca0c5e9fd16",
+    "include/p4_uac2_stream.h": "aad452905e8b04c04797559f635c81cd176017d3c31c82d96dd0e302701a9b35",
+    "port/dwc2_patch.cmake": "a8a80dd76d1a4c2bfa1177967bb3eb0eb7cae060613466a23bdb1c43a674a21a",
+    "port/patch_dwc2.py": "686302699102201b8fe0cbdb5b2bed7094d5606ebf2f514914247eb468794ec3",
+    "private/audio_ring_test.h": "01826974d20df578015ac77fb6566d26e0f475089fe3fb69129f693da3307203",
+    "private/audio_ring.h": "f786be340d3e76941f8f1c933016664e384bdcbc7aaa53b2a3075e17e10608b1",
+    "private/tusb_config.h": "45d1f3e7c98ee5c990097ee70405fd04127363ce12576250c173a842c8055085",
+    "private/usb_profile.h": "a15bfaf03a4be22cf91a604c870088e3282ecb9757a9b5ebadfb9b9eda4160c9"
+  },
+  "reference_sha256_lf_utf8": {
+    "port/patch_dwc2.py": "01b81dad9deb517e3c449e775e2c5f65ca6c383dc3ffa6d56c492627d75f5f48"
+  },
+  "packaging_change": "Normalize CRLF to LF before checking the pinned upstream DCD hash; generated C output is unchanged."
+}
