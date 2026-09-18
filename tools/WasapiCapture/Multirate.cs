@@ -5,6 +5,7 @@ internal static partial class Program
 {
     private static uint RequestedRate = 48000;
     private static ushort RequestedBits = 24;
+    private static bool Packed24;
     private static long RequestedPeriod = 200000; // legacy default 20 ms; --period min queries driver
 
     private static string[] ParseOptions(string[] args)
@@ -13,6 +14,7 @@ internal static partial class Program
         for (int i = 0; i < args.Length; ++i)
         {
             if (args[i] == "--rate") RequestedRate = uint.Parse(args[++i], CultureInfo.InvariantCulture);
+            else if (args[i] == "--packed24") Packed24 = true;
             else if (args[i] == "--bits") RequestedBits = ushort.Parse(args[++i], CultureInfo.InvariantCulture);
             else if (args[i] == "--period")
             {
@@ -29,7 +31,7 @@ internal static partial class Program
 
     private static IntPtr PcmFormat(uint rate, ushort validBits)
     {
-        ushort containerBits = validBits == 16 ? (ushort)16 : (ushort)32;
+        ushort containerBits = validBits == 16 ? (ushort)16 : Packed24 ? (ushort)24 : (ushort)32;
         ushort block = (ushort)(containerBits / 8 * 2);
         byte[] pcm = new byte[40];
         BitConverter.GetBytes((ushort)0xfffe).CopyTo(pcm, 0);
@@ -87,7 +89,7 @@ internal static partial class Program
         throw new InvalidOperationException("Could not negotiate an aligned exclusive buffer");
     }
 
-    private static int Probe(string[] endpoints)
+    private static int Probe(string[] endpoints, bool pcm24Only = false)
     {
         if (endpoints.Length is < 1 or > 2) throw new ArgumentException("--probe CAPTURE_GUID [RENDER_GUID]");
         bool all = true;
@@ -108,8 +110,11 @@ internal static partial class Program
                     try
                     {
                         int hr = client.IsFormatSupported(AudioClientShareMode.Exclusive, format, IntPtr.Zero);
-                        Console.WriteLine($"format rate={rate} valid_bits={bits} supported={hr == 0} hr=0x{hr:X8}");
-                        all &= hr == 0;
+                        bool expected = !pcm24Only || bits == 24;
+                        Console.WriteLine($"format rate={rate} valid_bits={bits} supported={hr == 0} expected={expected} hr=0x{hr:X8}");
+                        // A negative format test must reject the format, not merely
+                        // fail for another reason (device unplugged, access denied...).
+                        all &= expected ? hr == 0 : hr == unchecked((int)0x88890008);
                     }
                     finally { Marshal.FreeCoTaskMem(format); }
                 }

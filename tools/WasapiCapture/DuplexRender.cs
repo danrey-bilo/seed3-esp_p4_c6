@@ -30,8 +30,8 @@ internal static partial class Program
         {
             WaveFormatEx fmt = Marshal.PtrToStructure<WaveFormatEx>(formatPointer);
             bool floating = fmt.FormatTag == 3 || (fmt.FormatTag == 0xfffe && Marshal.ReadInt32(formatPointer, 24) == 3);
-            if (fmt.Channels != 2 || (fmt.BitsPerSample != 16 && fmt.BitsPerSample != 32))
-                throw new InvalidOperationException("Render must be stereo PCM16/PCM32 or float32");
+            if (fmt.Channels != 2 || (fmt.BitsPerSample != 16 && fmt.BitsPerSample != 24 && fmt.BitsPerSample != 32))
+                throw new InvalidOperationException("Render must be stereo PCM16/PCM24/PCM32 or float32");
             InitializeStream(device, ref instance, ref client, formatPointer, exclusive, "render");
             using var ready = new EventWaitHandle(false, EventResetMode.AutoReset);
             Check(client.SetEventHandle(ready.SafeWaitHandle.DangerousGetHandle()), "Render event");
@@ -52,6 +52,12 @@ internal static partial class Program
                         float v = (float)(0.125 * Math.Sin(2 * Math.PI * (c == 0 ? 401 : 601) * (sent + f) / fmt.SamplesPerSec));
                         int offset = checked((int)((2 * f + c) * (fmt.BitsPerSample / 8)));
                         if (fmt.BitsPerSample == 16) BitConverter.TryWriteBytes(samples.AsSpan(offset), (short)(v * 32767));
+                        else if (fmt.BitsPerSample == 24) {
+                            int packed = (int)(v * 8388608.0);
+                            samples[offset] = (byte)packed;
+                            samples[offset + 1] = (byte)(packed >> 8);
+                            samples[offset + 2] = (byte)(packed >> 16);
+                        }
                         else BitConverter.TryWriteBytes(samples.AsSpan(offset), floating ? BitConverter.SingleToInt32Bits(v) : (int)(v * 2147483648.0) & ~255);
                     }
                 }

@@ -25,6 +25,7 @@ class TransportLogTests(unittest.TestCase):
             path.write_text("\r\r\n".join(lines), encoding="utf-8")
             report = analyze(path)
         self.assertTrue(report["spi_errors_all_zero"])
+        self.assertTrue(report["spi_error_counters_unchanged"])
         self.assertTrue(report["steady_duplex_counters_unchanged"])
         self.assertEqual(report["usb_last"]["capture_over"], 23)
         self.assertEqual(report["usb_last"]["playback_over"], 0)
@@ -32,6 +33,21 @@ class TransportLogTests(unittest.TestCase):
         self.assertEqual(report["usb_last"]["playback_fill"], 100)
         self.assertEqual(report["steady_duplex"][0]["duration_ms"], 3000)
         self.assertEqual(report["cpu_scheduler_estimate"]["96000"]["busy_core1"]["median_percent"], 27.5)
+
+    def test_old_startup_error_is_not_hidden(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "synthetic.log"
+            path.write_text("I (1000) x: spi=3 err=0 frame_err[h/c/s/f]=1/0/0/0\n"
+                            "I (2000) x: spi=3003 err=0 frame_err[h/c/s/f]=1/0/0/0\n", encoding="utf-8")
+            report = analyze(path)
+            self.assertFalse(report["spi_errors_all_zero"])
+            self.assertTrue(report["spi_error_counters_unchanged"])
+            self.assertEqual(report["spi_error_deltas"]["frame_errors_h_c_s_f"], [0, 0, 0, 0])
+            with path.open("a", encoding="utf-8") as stream:
+                stream.write("I (3000) x: spi=6003 err=0 frame_err[h/c/s/f]=1/1/0/0\n")
+            report = analyze(path)
+            self.assertFalse(report["spi_error_counters_unchanged"])
+            self.assertEqual(report["spi_error_deltas"]["frame_errors_h_c_s_f"], [0, 1, 0, 0])
 
 
 if __name__ == "__main__":

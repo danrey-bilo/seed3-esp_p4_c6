@@ -77,8 +77,18 @@ def analyze(path):
                                            "max_percent": max(r[key] for r in subset) / 10}
                                       for key in ("busy_core0", "busy_core1", "spi_task", "usb_task")}
     clean_spi = bool(spi) and all(r["err"] == 0 and not any(r["frame_errors"]) for r in spi)
+    # Preserve absolute counters above: a pre-test startup error is not zero.
+    # Also expose interval deltas without confusing old errors with new ones.
+    spi_delta = None
+    if spi:
+        spi_delta = {"transfer_errors": (spi[-1]["err"] - spi[0]["err"]) & 0xffffffff,
+                     "frame_errors_h_c_s_f": [(last - first) & 0xffffffff
+                                              for first, last in zip(spi[0]["frame_errors"], spi[-1]["frame_errors"])]}
+    unchanged_spi = (len(spi) >= 2 and not spi_delta["transfer_errors"]
+                     and not any(spi_delta["frame_errors_h_c_s_f"]))
     clean_steady = bool(steady) and all(not any(r["deltas"].values()) for r in steady)
     return {"spi_samples": len(spi), "spi_errors_all_zero": clean_spi,
+            "spi_error_deltas": spi_delta, "spi_error_counters_unchanged": unchanged_spi,
             "spi_first": spi[0] if spi else None, "spi_last": spi[-1] if spi else None,
             "usb_first": records[0] if records else None, "usb_last": records[-1] if records else None,
             "steady_duplex": steady, "steady_duplex_counters_unchanged": clean_steady,

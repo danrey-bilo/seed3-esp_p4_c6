@@ -1,0 +1,58 @@
+{
+  "profile": "p4_uac2_stream 0.2.1 PCM24-only packed",
+  "date": "2026-09-18",
+  "source": "Seed3 ADC L/R",
+  "transport_checks_pass": true,
+  "analog_quality_measured": false,
+  "hardware": {"p4_revision": "1.3", "usb_high_speed": true, "spi_mhz": 20},
+  "format": {"channels_each_direction": 2, "valid_bits": 24, "usb_subslot_bytes": 3,
+             "api_subslot_bytes": 4, "rates": [44100, 48000, 88200, 96000]},
+  "offline_tests_passed": 17,
+  "probe": {"pcm24_supported_cases": 8, "pcm16_correctly_rejected_cases": 8},
+  "before_watchdog_fix": {
+    "duplex_matrix_cases_passed": 8,
+    "matrix_seconds_per_case": 12,
+    "periods_ms": ["minimum", 10],
+    "capture_rate_switch_cycles_passed": 100,
+    "first_301s_soak_qualified": false,
+    "first_soak_steady_recovery_delta": 4
+  },
+  "after_watchdog_fix": {
+    "matrix_cases_passed": 10,
+    "matrix_seconds_per_case": 2,
+    "capture_cycles_passed": 100,
+    "capture_cycle_seconds": 0.1,
+    "duplex": {
+      "rate": 96000, "requested_seconds": 301, "host_elapsed_seconds": 301.346,
+      "period_ms": 10, "device_prefill_ms": 1,
+      "frames": 28896000, "payload_bytes": 173376000,
+      "host_discontinuities": 0, "host_timestamp_errors": 0,
+      "host_position_errors": 0, "host_silent_packets": 0,
+      "steady_counter_window_ms": 296867,
+      "steady_usb_deltas": {"capture_silence": 0, "capture_overflow": 0,
+        "playback_underrun": 0, "playback_overflow": 0, "bad_packets": 0,
+        "capture_incomplete": 0, "feedback_incomplete": 0,
+        "endpoint_recovery": 0, "controller_restart": 0},
+      "capture_max_gap_us": 500, "playback_max_gap_us": 500,
+      "spi_absolute_errors_h_c_s_f": [1, 0, 0, 0],
+      "spi_error_deltas_h_c_s_f": [0, 0, 0, 0],
+      "spi_transfer_errors": 0,
+      "p4_cpu_median_percent": {"core0": 19.6, "core1": 27.3}
+    },
+    "seed_after_streams_closed": {"rate": 96000, "busy_percent": 23.5,
+      "audio_callback_percent": 5.1, "capture_overruns": 0, "spi_start_errors": 0}
+  },
+  "firmware_sha256": {
+    "Seed3P4SpiAudio.bin": "c33feb3291d5a05c724e11d7a0807720aeafa3f2912b1d1d8ec7685ba41dcd48",
+    "ESP32P4_Seed3_SPI_UAC2_2x2_Merged.bin": "1e2137192939a1c54a35ff24ee73186550c1c02ae3207e30c7d6b4a8fed47bd4",
+    "seed3_p4_spi_uac2.bin": "e4c3b82c82f48db17e1aac60d2ad9aacde2844de575deed8517eb52ba8bc29fa"
+  },
+  "notes": [
+    "One invalid SPI header was discarded during P4 restart before qualification; its absolute counter is preserved, not cleared.",
+    "Steady counter analysis excludes startup and close boundaries; open/close counters may be nonzero.",
+    "Minimum WASAPI periods passed short tests; the 301-second qualification used 10ms, not minimum.",
+    "No known analog reference was supplied. SNR, THD, channel separation and end-to-end latency are not qualified.",
+    "CPU figures are scheduler/idle-counter estimates; Seed was sampled with USB streams closed.",
+    "Raw local evidence: tools/test-output/v2-packed24-final-{matrix,acceptance}, v2-packed24-final-uart.log and v2-packed24-final-counters.json."
+  ]
+}

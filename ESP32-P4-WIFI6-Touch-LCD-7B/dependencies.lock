@@ -22,6 +22,6 @@ dependencies:
 direct_dependencies:
 - espressif/tinyusb
 - idf
-manifest_hash: ea0688f4ba92947f1f43346245238dfc08357349cd50e2a795d5167fad9b1b5e
+manifest_hash: 91d51338181a1157e8fa432312c87af2e4c2880a75ebe9c5d89924001b2e29e4
 target: esp32p4
 version: 2.0.0

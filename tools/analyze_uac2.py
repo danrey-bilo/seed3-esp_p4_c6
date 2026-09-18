@@ -3,6 +3,7 @@ import argparse
 import json
 import math
 import struct
+from pcm_samples import iter_stereo_pcm
 
 
 def power(samples, frequency, rate):
@@ -36,9 +37,9 @@ def analyze(path, expected):
         if tag == 0xfffe:
             tag = struct.unpack_from("<I", fmt, 24)[0]
         if (channels != 2 or rate not in (44100, 48000, 88200, 96000, 176400, 192000)
-                or bits not in (16, 32) or block != bits // 8 * 2
+                or bits not in (16, 24, 32) or block != bits // 8 * 2
                 or tag not in (1, 3) or (tag == 3 and bits != 32)):
-            raise ValueError("requires stereo 44.1-192kHz PCM16/PCM32 or float32")
+            raise ValueError("requires stereo 44.1-192kHz PCM16/PCM24/PCM32 or float32")
         if size % block:
             raise ValueError("partial audio frame")
         frames = size // block
@@ -65,12 +66,12 @@ def analyze(path, expected):
             if len(raw) != count * block:
                 raise ValueError("truncated audio data")
             samples = [[], []]
-            for pair in struct.iter_unpack("<ff" if tag == 3 else ("<hh" if bits == 16 else "<ii"), raw):
+            for pair in iter_stereo_pcm(raw, bits, tag == 3):
                 for c, value in enumerate(pair):
                     if tag == 1:
                         if bits == 32 and valid_bits == 24 and value & 255:
                             padding_errors += 1
-                        value /= 32768.0 if bits == 16 else 2147483648.0
+                        value /= float(1 << (bits - 1))
                     if not math.isfinite(value):
                         nonfinite += 1
                         value = 0.

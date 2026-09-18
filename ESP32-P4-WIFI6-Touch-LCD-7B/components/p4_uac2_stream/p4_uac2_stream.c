@@ -41,7 +41,7 @@ static uint32_t cap_active, play_active, play_epoch, initialised;
 static uint32_t requested_rate = 48000, runtime_rate = 48000, confirmed_rate;
 static uint32_t source_epoch, applied_source_epoch;
 static uint32_t buffer_ms = 1, prefill_frames = 64, applied_buffer_ms = 1;
-static uint32_t cap_frame_bytes = 8, play_frame_bytes = 8, packet_phase;
+static uint32_t cap_frame_bytes = UAC_FRAME_BYTES, play_frame_bytes = UAC_FRAME_BYTES, packet_phase;
 static uint32_t queued_frames, source_frames, last_source, last_source_ms;
 static uint32_t usb_ticks, clock_ticks, clock_frames;
 static uint32_t rate_q16 = 6u << 16, fill_q8 = P4_UAC2_PREFILL << 8;
@@ -210,7 +210,7 @@ static bool endpoint_restart(unsigned index, bool enable) {
     eps[index].enabled = false;
     eps[index].pending = false;
     unsigned itf = index == CAP ? UAC_CAP_ITF : UAC_PLAY_ITF;
-    uint8_t alt = alternates[itf] ? alternates[itf] : 2;
+    uint8_t alt = alternates[itf] ? alternates[itf] : UAC_STREAM_ALT;
     bool ok = usbd_edpt_iso_activate(UAC_PORT, uac_endpoint(eps[index].address, alt));
     if (ok) {
         state_clear(index);
@@ -229,7 +229,7 @@ static bool endpoint_restart(unsigned index, bool enable) {
 }
 static bool stream_set(unsigned itf, uint8_t alt) {
     if (itf != UAC_CAP_ITF && itf != UAC_PLAY_ITF) return false;
-    if (alt > 2) return false;
+    if (alt > UAC_STREAM_ALT) return false;
     bool enable = alt != 0 && !suspended;
     // Stop/reconfigure under the recursive USB spin lock so an old completion
     // cannot be counted with the new subslot width.
@@ -237,7 +237,7 @@ static bool stream_set(unsigned itf, uint8_t alt) {
     alternates[itf] = alt;
     if (itf == UAC_CAP_ITF) {
         STORE(cap_active, 0);
-        if (alt) STORE(cap_frame_bytes, alt == 1 ? 4 : 8);
+        if (alt) STORE(cap_frame_bytes, UAC_FRAME_BYTES);
         if (!endpoint_restart(CAP, enable)) { usbd_spin_unlock(false); return false; }
         queued_frames = 0;
         capture_started = false;
@@ -248,7 +248,7 @@ static bool stream_set(unsigned itf, uint8_t alt) {
         STORE(cap_active, enable);
     } else {
         STORE(play_active, 0);
-        if (alt) STORE(play_frame_bytes, alt == 1 ? 4 : 8);
+        if (alt) STORE(play_frame_bytes, UAC_FRAME_BYTES);
         if (!endpoint_restart(PLAY, enable) || !endpoint_restart(FB, enable)) {
             usbd_spin_unlock(false); return false;
         }
@@ -331,7 +331,7 @@ static bool control_impl(uint8_t port, uint8_t stage, const tusb_control_request
     if (r->bmRequestType_bit.type == TUSB_REQ_TYPE_STANDARD) {
         if (r->bRequest == TUSB_REQ_GET_INTERFACE && input && itf < 3 && r->wLength == 1)
             return tud_control_xfer(port, r, &alternates[itf], 1);
-        if (r->bRequest == TUSB_REQ_SET_INTERFACE && !input && r->wValue <= 2 && !r->wLength) {
+        if (r->bRequest == TUSB_REQ_SET_INTERFACE && !input && r->wValue <= UAC_STREAM_ALT && !r->wLength) {
             if (!stream_set(itf, r->wValue)) return false;
             if (r->wValue && itf == UAC_CAP_ITF) ADD(stats.capture_opens, 1);
             if (r->wValue && itf == UAC_PLAY_ITF) ADD(stats.playback_opens, 1);
@@ -555,10 +555,14 @@ static void feedback_update(uint32_t now_ms) {
 }
 static void watchdog(void) {
     if (!tud_mounted() || suspended) return;
-    uint32_t now = xTaskGetTickCount();
     for (unsigned i = 0; i < 3; ++i) {
         endpoint_t *e = &eps[i];
         usbd_spin_lock(false);
+        // Read time AFTER masking the USB ISR. If read before the lock, a
+        // completion can advance last_progress_tick into the next tick while
+        // 'now' is stale. Unsigned subtraction then wraps and falsely times out
+        // a healthy endpoint. ISR and watchdog run on the same pinned core.
+        uint32_t now = xTaskGetTickCount();
         bool stalled = e->enabled && (i != CAP || capture_started) &&
             now - e->last_progress_tick >= pdMS_TO_TICKS(8);
         usbd_spin_unlock(false);
@@ -598,7 +602,7 @@ static void usb_task(void *arg) {
     if (!audio_ring_self_test(&capture_ring) || !audio_format_self_test()) {
         STORE(initialised, 3); ESP_LOGE("p4_uac2", "SPSC self-test FAILED"); vTaskDelete(NULL); return;
     }
-    ESP_LOGI("p4_uac2", "SPSC, fractional multirate packetizer and PCM16/24 self-tests PASS");
+    ESP_LOGI("p4_uac2", "SPSC and multirate self-tests PASS; USB profile PCM24 only");
     usb_phy_config_t conf = { .controller = USB_PHY_CTRL_OTG, .otg_mode = USB_OTG_MODE_DEVICE,
                              .target = USB_PHY_TARGET_INT, .otg_speed = USB_PHY_SPEED_HIGH };
     if (usb_new_phy(&conf, &phy) != ESP_OK) { STORE(initialised, 3); vTaskDelete(NULL); return; }
@@ -706,8 +710,8 @@ void p4_uac2_get_stats(p4_uac2_stats_t *out) {
     out->initialization_state = LOAD(initialised);
     out->sample_rate = LOAD(runtime_rate);
     out->source_sample_rate = LOAD(confirmed_rate);
-    out->capture_bits = LOAD(cap_frame_bytes) == 4 ? 16 : 24;
-    out->playback_bits = LOAD(play_frame_bytes) == 4 ? 16 : 24;
+    out->capture_bits = UAC_VALID_BITS;
+    out->playback_bits = UAC_VALID_BITS;
     out->prefill_frames = LOAD(prefill_frames);
     out->buffer_ms = LOAD(buffer_ms);
     out->capture_source_frames = LOAD(source_frames);

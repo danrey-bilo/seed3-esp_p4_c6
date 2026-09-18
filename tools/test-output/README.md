@@ -1,5 +1,12 @@
 # Hardware test evidence
 
+The active PCM24-only v0.2.1 profile has a separate
+[report](../../docs/PCM24_ONLY_RU.md). It uses real ADC input and packed 24-bit
+USB, not the v0.2 diagnostic tones/32-bit subslot. The v0.2 evidence below does
+not automatically qualify it. Ad-hoc `v2-packed24-*` WAV/log files stay local.
+`qualification-pcm24/summary.json` retains the compact final numbers and hashes,
+including the rejected first soak and the pre-test SPI header counter.
+
 Final v0.2 results use `analysis_version: 2` and the corrected WASAPI recorder.
 The authoritative explanation and binary hashes are in
 [TEST_REPORT_RU.md](../../libraries/p4_uac2_stream_v2/docs/TEST_REPORT_RU.md).

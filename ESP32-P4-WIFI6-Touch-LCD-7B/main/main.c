@@ -558,7 +558,7 @@ void app_main(void)
     ESP_ERROR_CHECK(xTaskCreatePinnedToCore(console_task, "audio_console", 3072, NULL, 3, NULL, 0) == pdPASS ? ESP_OK : ESP_ERR_NO_MEM);
 
     ESP_LOGI(TAG,
-             "ready: UAC2 2 IN + 2 OUT, 44.1/48/88.2/96 kHz, PCM16/24-in-32, USB HS; "
+             "ready: UAC2 2 IN + 2 OUT, 44.1/48/88.2/96 kHz, packed PCM24 only, USB HS; "
              "Seed3 SPI transport at %d MHz",
              SPI_CLOCK_HZ / 1000000);
     while (true) {

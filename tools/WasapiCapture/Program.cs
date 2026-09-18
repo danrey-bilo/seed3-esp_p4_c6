@@ -240,7 +240,8 @@ internal static partial class Program
     {
         try {
             args = ParseOptions(args);
-            return args.Length > 0 && args[0] == "--probe" ? Probe(args.Skip(1).ToArray()) : Run(args);
+            return args.Length > 0 && (args[0] == "--probe" || args[0] == "--probe-24-only")
+                ? Probe(args.Skip(1).ToArray(), args[0] == "--probe-24-only") : Run(args);
         }
         catch (Exception error)
         {

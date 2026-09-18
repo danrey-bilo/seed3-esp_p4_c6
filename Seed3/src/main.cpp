@@ -30,7 +30,7 @@ constexpr float       kRightFrequency   = 1501.0f;
 constexpr float       kTestAmplitude    = 0.2511886432f; // -12 dBFS peak
 constexpr float       kPlaybackMixGain  = 0.5f;
 constexpr float       kTwoPi            = 6.2831853071795864769f;
-constexpr bool        kUseTestTones     = true;
+constexpr bool        kUseTestTones     = false; // production capture: Seed ADC L/R
 
 struct AudioBlock
 {
@@ -601,6 +601,7 @@ int main(void)
 
     g_seed.SetAudioBlockSize(kBlockFrames);
     if(!SeedConfigureAudioClock(g_seed, g_sample_rate)) Fatal("SEED:CLOCK_FAIL\r\n");
+    SendUart(kUseTestTones ? "SEED:CAPTURE_TEST_TONES\r\n" : "SEED:CAPTURE_ADC\r\n");
     g_seed.StartAudio(AudioCallback);
     SendUart("SEED:AUDIO_START\r\n");
 

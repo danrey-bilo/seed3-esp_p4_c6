@@ -7,11 +7,12 @@ static const tusb_desc_device_t device = {
     .bcdUSB = 0x0200, .bDeviceClass = TUSB_CLASS_MISC,
     .bDeviceSubClass = MISC_SUBCLASS_COMMON, .bDeviceProtocol = MISC_PROTOCOL_IAD,
     .bMaxPacketSize0 = 64, .idVendor = 0x303a, .idProduct = 0x40a4,
-    .bcdDevice = 0x0200, .iManufacturer = 1, .iProduct = 2, .iSerialNumber = 3,
+    // The format topology changed: retain VID/PID/serial, refresh its revision.
+    .bcdDevice = 0x0201, .iManufacturer = 1, .iProduct = 2, .iSerialNumber = 3,
     .bNumConfigurations = 1
 };
 #define AC_ENTITY_BYTES (8 + 17 + 18 + 12 + 17 + 12)
-#define CONFIG_BYTES (9 + 8 + 9 + 9 + AC_ENTITY_BYTES + 9 + 2 * 53 + 9 + 2 * 46)
+#define CONFIG_BYTES (9 + 8 + 9 + 9 + AC_ENTITY_BYTES + 9 + 53 + 9 + 46)
 #define PLAY_ALT(alt, subslot, bits, interval) \
     TUD_AUDIO_DESC_STD_AS_INT(1, alt, 2, 5), \
     TUD_AUDIO_DESC_CS_AS_INT(1, 0, AUDIO_FORMAT_TYPE_I, AUDIO_DATA_FORMAT_TYPE_I_PCM, 2, 3, 0), \
@@ -39,11 +40,9 @@ static const tusb_desc_device_t device = {
     TUD_AUDIO_DESC_INPUT_TERM(0x11, AUDIO_TERM_TYPE_IN_GENERIC_MIC, 0x13, 4, 2, 3, 0, 0, 0), \
     TUD_AUDIO_DESC_OUTPUT_TERM(0x13, AUDIO_TERM_TYPE_USB_STREAMING, 0, 0x11, 4, 0, 0), \
     TUD_AUDIO_DESC_STD_AS_INT(1, 0, 0, 5), \
-    PLAY_ALT(1, 2, 16, interval), \
-    PLAY_ALT(2, 4, 24, interval), \
+    PLAY_ALT(UAC_STREAM_ALT, UAC_SUBSLOT_BYTES, UAC_VALID_BITS, interval), \
     TUD_AUDIO_DESC_STD_AS_INT(2, 0, 0, 6), \
-    CAP_ALT(1, 2, 16, interval), \
-    CAP_ALT(2, 4, 24, interval)
+    CAP_ALT(UAC_STREAM_ALT, UAC_SUBSLOT_BYTES, UAC_VALID_BITS, interval)
 
 static const uint8_t hs[] = { PROFILE(3) };
 static const uint8_t fs[] = { PROFILE(1) };

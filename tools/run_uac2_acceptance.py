@@ -5,6 +5,7 @@ import pathlib
 import subprocess
 import time
 from analyze_uac2 import analyze
+from check_pcm24_capture import check as check_pcm24
 
 
 def main():
@@ -14,6 +15,8 @@ def main():
     parser.add_argument("--rate", type=int, choices=(44100, 48000, 88200, 96000), default=48000)
     parser.add_argument("--bits", type=int, choices=(16, 24), default=24)
     parser.add_argument("--period", default="min", help="WASAPI period: min or milliseconds")
+    parser.add_argument("--packed24", action="store_true", help="3 bytes per USB sample; requires --bits 24")
+    parser.add_argument("--adc", action="store_true", help="layout/count checks only, not analog-quality acceptance (requires --packed24)")
     parser.add_argument("--cycles", type=int, default=100)
     parser.add_argument("--cycle-seconds", type=float, default=.25)
     parser.add_argument("--record-seconds", type=int, default=60)
@@ -22,12 +25,18 @@ def main():
     parser.add_argument("--duplex-seconds", type=int, default=301)
     parser.add_argument("--output", type=pathlib.Path, default=pathlib.Path(__file__).parent / "test-output" / "acceptance")
     args = parser.parse_args()
+    if args.packed24 and args.bits != 24:
+        parser.error("--packed24 requires --bits 24")
+    if args.adc and not args.packed24:
+        parser.error("--adc requires --packed24")
     exe = pathlib.Path(__file__).parent / "WasapiCapture/bin/Release/net10.0-windows/WasapiCapture.exe"
     args.output.mkdir(parents=True, exist_ok=True)
     summary = {"started": time.strftime("%Y-%m-%dT%H:%M:%S%z"), "capture": args.capture,
                "render": args.render, "rate": args.rate, "bits": args.bits,
                "period": args.period, "cycles_passed": 0, "completed": False}
     summary["analysis_version"] = 2  # phase discontinuities now fail acceptance
+    summary["packed24"], summary["analog_quality_measured"] = args.packed24, False
+    summary["known_tones_required"] = not args.adc
 
     def save():
         (args.output / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
@@ -38,6 +47,8 @@ def main():
         if render:
             command.append(render)
         command.extend(["--rate", str(args.rate), "--bits", str(args.bits), "--period", args.period])
+        if args.packed24:
+            command.append("--packed24")
         before = time.monotonic()
         # A hung endpoint gets a bounded failure, never an indefinite test wait.
         proc = subprocess.run(command, capture_output=True, timeout=seconds + 25, text=True, errors="replace")
@@ -46,8 +57,9 @@ def main():
             raise RuntimeError(f"{name}: recorder exit {proc.returncode}: {proc.stdout[-1200:]} {proc.stderr}")
         result = {"elapsed": time.monotonic() - before, "exit": proc.returncode}
         if measure:
-            result["audio"] = analyze(wav, round(seconds * args.rate))
-            if not result["audio"]["pass"]:
+            result["audio"] = (check_pcm24(wav, args.rate, round(seconds * args.rate)) if args.adc
+                               else analyze(wav, round(seconds * args.rate)))
+            if not result["audio"]["layout_pass" if args.adc else "pass"]:
                 (args.output / f"{name}.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
                 raise RuntimeError(f"{name}: audio measurements failed; inspect JSON")
         return result

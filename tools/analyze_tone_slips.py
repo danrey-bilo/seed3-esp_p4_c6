@@ -8,6 +8,7 @@ import json
 import math
 from pathlib import Path
 import struct
+from pcm_samples import iter_stereo_pcm
 
 
 def infer(previous, current, following, rate):
@@ -48,8 +49,8 @@ def analyze(path):
         tag, channels, rate, _, block, bits = struct.unpack_from("<HHIIHH", fmt)
         if tag == 0xfffe:
             tag = struct.unpack_from("<I", fmt, 24)[0]
-        if tag != 1 or channels != 2 or bits not in (16, 32) or block != bits // 4:
-            raise ValueError("stereo integer PCM16/PCM32 required")
+        if tag != 1 or channels != 2 or bits not in (16, 24, 32) or block != bits // 4:
+            raise ValueError("stereo integer PCM16/PCM24/PCM32 required")
         frames, position = size // block, 0
         coefficient = [2 * math.cos(2 * math.pi * f / rate) for f in (997, 1501)]
         threshold = 1.5e-4 if bits == 16 else 2e-5
@@ -61,7 +62,7 @@ def analyze(path):
             raw = stream.read(count * block)
             if len(raw) != count * block:
                 raise ValueError("truncated PCM")
-            for pair in struct.iter_unpack("<hh" if bits == 16 else "<ii", raw):
+            for pair in iter_stereo_pcm(raw, bits):
                 values = [pair[0] / scale, pair[1] / scale]
                 if pending:
                     start, old, current = pending
