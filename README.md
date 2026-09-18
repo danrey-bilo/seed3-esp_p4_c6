@@ -55,4 +55,5 @@ Fixed-48k v0.1 сохранена в `libraries/p4_uac2_stream`;
 её [отчёт](tools/test-output/acceptance-final/REPORT_RU.md) не относится к v0.2.
 Ранняя I2S-схема и старые образы в истории Git не относятся к текущей проводке.
 WAV/build/log остаются локально; в Git — код, актуальные прошивки и компактные отчёты.
-Публикационная ветка и сохранённая история описаны в [GIT_CLEANUP_RU.md](docs/GIT_CLEANUP_RU.md).
+Основная ветка — `master`; старая локальная история сохранена в резервном
+Git-архиве. Подробности и восстановление: [GIT_CLEANUP_RU.md](docs/GIT_CLEANUP_RU.md).
