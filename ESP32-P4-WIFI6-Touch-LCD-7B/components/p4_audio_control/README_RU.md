@@ -10,9 +10,12 @@
 - поддерживает принудительный `PEDALBOARD ON` без ПК и `ON/BYPASS` с ПК;
 - публикует один подтверждённый `source_sample_rate` во все экраны;
 - хранит двухбитные маски capture/playback в NVS и передаёт их транспорту;
+- хранит в NVS настройку автоматического выбора `MONITOR/PEDALBOARD`;
+- хранит выбранный профиль SPI `BALANCED/LOW LATENCY`; автоматически возвращает
+  effective mode `LOCAL`, когда capture и playback endpoint закрыты;
 - определяет физическое присутствие ПК по SOF heartbeat, поэтому устаревшие
-  `tud_connected()/tud_mounted()` после снятия D+/D− не удерживают режим
-  `WINDOWS`.
+  `tud_connected()/tud_mounted()/suspended` после снятия D+/D− не удерживают
+  режим `WINDOWS`.
 
 `requested_rate`, а также последние значения capture/playback endpoint не
 выдаются за применённую частоту. Пока Seed3 не подтвердил новый физический

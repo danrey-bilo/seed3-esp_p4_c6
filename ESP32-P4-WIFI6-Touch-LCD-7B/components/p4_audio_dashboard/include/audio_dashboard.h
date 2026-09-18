@@ -10,6 +10,12 @@
 extern "C" {
 #endif
 
+enum {
+    AUDIO_DASHBOARD_TRANSPORT_BALANCED = 0,
+    AUDIO_DASHBOARD_TRANSPORT_LOW_LATENCY = 1,
+    AUDIO_DASHBOARD_TRANSPORT_LOCAL = 2,
+};
+
 typedef struct {
     /* The one confirmed physical Seed3 clock shown on every screen. */
     uint32_t sample_rate;
@@ -26,6 +32,9 @@ typedef struct {
     bool pedalboard_enabled;
     bool pedalboard_forced;
     bool pedalboard_syncing;
+    bool auto_switch_views;
+    uint8_t transport_profile;
+    uint8_t transport_mode;
     bool rate_syncing;
     bool rate_conflict;
     uint8_t capture_channel_mask;
@@ -40,6 +49,10 @@ typedef struct {
     bool set_channel_masks;
     uint8_t capture_channel_mask;
     uint8_t playback_channel_mask;
+    bool set_auto_switch_views;
+    bool auto_switch_views;
+    bool set_transport_profile;
+    uint8_t transport_profile;
 } audio_dashboard_command_t;
 
 /* Starts the Waveshare 1024x600 MIPI-DSI display and the low-priority LVGL

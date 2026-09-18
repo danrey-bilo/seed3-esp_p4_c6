@@ -10,12 +10,16 @@ def main():
     sys.stdout.reconfigure(errors="replace")
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", default="COM6")
-    parser.add_argument("--command", help="buffer 1|2|4, seed reset, seed boot, spi pause N")
+    parser.add_argument("--command", help="buffer 1|2|4, transport balanced|low, seed reset|boot|stats, spi pause N")
     parser.add_argument("--seconds", type=float, default=5)
     parser.add_argument("--output", type=pathlib.Path)
     args = parser.parse_args()
     if args.command:
-        fixed = args.command in ("buffer 1", "buffer 2", "buffer 4", "seed reset", "seed boot", "seed stats")
+        fixed = args.command in (
+            "buffer 1", "buffer 2", "buffer 4",
+            "transport balanced", "transport low",
+            "seed reset", "seed boot", "seed stats",
+        )
         pause = args.command.startswith("spi pause ") and args.command[10:].isdigit() and 1 <= int(args.command[10:]) <= 10000
         if not fixed and not pause:
             parser.error("unsupported command")

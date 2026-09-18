@@ -10,14 +10,18 @@ extern "C" {
 
 enum {
     SPI_AUDIO_MAGIC = 0x41554430U, /* "AUD0", little-endian */
-    SPI_AUDIO_VERSION = 1U,
+    SPI_AUDIO_VERSION = 2U,
     SPI_AUDIO_SAMPLE_RATE = 48000U,
+    /* The local DSP callback always uses 32 frames. BALANCED aggregates two
+     * callbacks at 88.2/96 kHz; the physical DMA frame stays fixed at the
+     * maximum size so both peers can change policy without wire desync. */
     SPI_AUDIO_FRAMES = 32U,
+    SPI_AUDIO_MAX_FRAMES = 64U,
     SPI_AUDIO_CHANNELS = 2U,
     SPI_AUDIO_VALID_BITS = 24U,
     SPI_AUDIO_HEADER_BYTES = 32U,
     SPI_AUDIO_PAYLOAD_BYTES =
-        SPI_AUDIO_FRAMES * SPI_AUDIO_CHANNELS * sizeof(int32_t),
+        SPI_AUDIO_MAX_FRAMES * SPI_AUDIO_CHANNELS * sizeof(int32_t),
     SPI_AUDIO_FRAME_BYTES = SPI_AUDIO_HEADER_BYTES + SPI_AUDIO_PAYLOAD_BYTES,
 };
 
@@ -29,6 +33,11 @@ enum {
     SPI_AUDIO_FLAG_SESSION_START = 1U << 4,
     /* Desired DSP graph state from P4. The fixed frame layout is unchanged. */
     SPI_AUDIO_FLAG_PEDALBOARD_ENABLED = 1U << 5,
+    /* No USB audio is transported. Seed runs its local graph and emits a
+     * low-rate status frame so P4 can still change rate/mode and show CPU. */
+    SPI_AUDIO_FLAG_CONTROL_ONLY = 1U << 6,
+    /* Clear: BALANCED (64 frames at 88.2/96 kHz). Set: LOW LATENCY (32). */
+    SPI_AUDIO_FLAG_LOW_LATENCY = 1U << 7,
 };
 
 enum {
@@ -40,7 +49,7 @@ enum {
     /* Seed3 acknowledgement of SPI_AUDIO_FLAG_PEDALBOARD_ENABLED. */
     SPI_AUDIO_STATUS_PEDALBOARD_ENABLED = 1U << 5,
     /* Bits 8..14 carry a 0..100 percent Seed3 CPU load sample. The wire
-     * layout and protocol version stay unchanged; low bits remain sticky
+     * layout remains unchanged within protocol v2; low bits remain sticky
      * transport errors. */
     SPI_AUDIO_STATUS_CPU_SHIFT = 8U,
     SPI_AUDIO_STATUS_CPU_MASK = 0x7f00U,
@@ -48,8 +57,9 @@ enum {
 
 /* Direction-specific control carried in header.status from P4 to Seed3.
  * Seed3-to-P4 uses the same upper status bits for CPU telemetry, so these
- * values are intentionally decoded only by the Seed3 receiver.  The fixed
- * 288-byte frame and protocol version remain unchanged. */
+ * values are intentionally decoded only by the Seed3 receiver. The physical
+ * 544-byte DMA frame stays fixed while header.frames selects 32 or 64 valid
+ * stereo frames. */
 enum {
     SPI_AUDIO_CONTROL_CAPTURE_MASK_SHIFT = 8U,
     SPI_AUDIO_CONTROL_CAPTURE_MASK = 0x0300U,
@@ -77,19 +87,19 @@ typedef struct __attribute__((packed)) {
 
 typedef struct __attribute__((packed, aligned(4))) {
     SpiAudioHeader header;
-    int32_t samples[SPI_AUDIO_FRAMES * SPI_AUDIO_CHANNELS];
+    int32_t samples[SPI_AUDIO_MAX_FRAMES * SPI_AUDIO_CHANNELS];
 } SpiAudioFrame;
 
 #ifdef __cplusplus
 static_assert(sizeof(SpiAudioHeader) == SPI_AUDIO_HEADER_BYTES,
               "SPI audio header must be exactly 32 bytes");
 static_assert(sizeof(SpiAudioFrame) == SPI_AUDIO_FRAME_BYTES,
-              "SPI audio frame must be exactly 288 bytes");
+              "SPI audio frame must be exactly 544 bytes");
 #else
 _Static_assert(sizeof(SpiAudioHeader) == SPI_AUDIO_HEADER_BYTES,
                "SPI audio header must be exactly 32 bytes");
 _Static_assert(sizeof(SpiAudioFrame) == SPI_AUDIO_FRAME_BYTES,
-               "SPI audio frame must be exactly 288 bytes");
+               "SPI audio frame must be exactly 544 bytes");
 #endif
 
 static inline uint32_t spi_audio_crc32_update(uint32_t crc,
@@ -158,6 +168,22 @@ static inline bool spi_audio_rate_is_supported(uint32_t rate)
     return rate == 44100U || rate == 48000U || rate == 88200U || rate == 96000U;
 }
 
+static inline bool spi_audio_frames_are_supported(uint16_t frames)
+{
+    return frames == SPI_AUDIO_FRAMES || frames == SPI_AUDIO_MAX_FRAMES;
+}
+
+static inline uint16_t spi_audio_balanced_frames(uint32_t rate)
+{
+    return (uint16_t)(rate >= 88200U ? SPI_AUDIO_MAX_FRAMES
+                                     : SPI_AUDIO_FRAMES);
+}
+
+static inline uint16_t spi_audio_payload_bytes(uint16_t frames)
+{
+    return (uint16_t)(frames * SPI_AUDIO_CHANNELS * sizeof(int32_t));
+}
+
 static inline uint16_t spi_audio_status_with_cpu(uint16_t status,
                                                   uint32_t cpu_permille)
 {
@@ -208,10 +234,10 @@ static inline bool spi_audio_header_is_valid(const SpiAudioHeader *header)
            && header->version == SPI_AUDIO_VERSION
            && header->header_bytes == SPI_AUDIO_HEADER_BYTES
            && spi_audio_rate_is_supported(header->sample_rate)
-           && header->frames == SPI_AUDIO_FRAMES
+           && spi_audio_frames_are_supported(header->frames)
            && header->channels == SPI_AUDIO_CHANNELS
            && header->valid_bits == SPI_AUDIO_VALID_BITS
-           && header->payload_bytes == SPI_AUDIO_PAYLOAD_BYTES
+           && header->payload_bytes == spi_audio_payload_bytes(header->frames)
            && (header->flags & SPI_AUDIO_FLAG_VALID) != 0U;
 }
 

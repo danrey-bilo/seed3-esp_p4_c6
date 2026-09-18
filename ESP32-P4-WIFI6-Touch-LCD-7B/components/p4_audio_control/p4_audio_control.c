@@ -23,6 +23,8 @@ static uint32_t s_local_sample_rate = SPI_AUDIO_SAMPLE_RATE;
 static uint32_t s_pedalboard_requested = 1U;
 static uint32_t s_pedalboard_confirmed = 1U;
 static uint32_t s_windows_rate_owner;
+static uint32_t s_auto_switch_views = 1U;
+static uint32_t s_transport_profile = P4_AUDIO_TRANSPORT_BALANCED;
 static uint32_t s_capture_channel_mask = SPI_AUDIO_CONTROL_CHANNEL_MASK;
 static uint32_t s_playback_channel_mask = SPI_AUDIO_CONTROL_CHANNEL_MASK;
 static uint32_t s_spi_errors;
@@ -67,6 +69,32 @@ static void save_channel_masks(void)
     }
 }
 
+static void save_auto_switch_views(void)
+{
+    if (!s_settings_ready) return;
+    esp_err_t result = nvs_set_u8(
+        s_settings_handle, "auto_views",
+        __atomic_load_n(&s_auto_switch_views, __ATOMIC_ACQUIRE) ? 1U : 0U);
+    if (result == ESP_OK) result = nvs_commit(s_settings_handle);
+    if (result != ESP_OK) {
+        ESP_LOGW(TAG, "cannot persist automatic view switching: %s",
+                 esp_err_to_name(result));
+    }
+}
+
+static void save_transport_profile(void)
+{
+    if (!s_settings_ready) return;
+    esp_err_t result = nvs_set_u8(
+        s_settings_handle, "transport",
+        (uint8_t)__atomic_load_n(&s_transport_profile, __ATOMIC_ACQUIRE));
+    if (result == ESP_OK) result = nvs_commit(s_settings_handle);
+    if (result != ESP_OK) {
+        ESP_LOGW(TAG, "cannot persist transport profile: %s",
+                 esp_err_to_name(result));
+    }
+}
+
 static void publish_dashboard_state(const p4_uac2_stats_t *usb)
 {
     const uint32_t requested_rate = p4_uac2_requested_rate();
@@ -77,6 +105,11 @@ static void publish_dashboard_state(const p4_uac2_stats_t *usb)
         &s_pedalboard_confirmed, __ATOMIC_ACQUIRE);
     const bool windows_owner = __atomic_load_n(
         &s_windows_rate_owner, __ATOMIC_ACQUIRE) != 0U;
+    const p4_audio_transport_mode_t transport_profile =
+        p4_audio_control_transport_profile();
+    const p4_audio_transport_mode_t transport_mode =
+        (usb->capture_active || usb->playback_active)
+            ? transport_profile : P4_AUDIO_TRANSPORT_LOCAL;
 
     const audio_dashboard_status_t dashboard = {
         /* Never publish an endpoint preference as the device clock. Seed3's
@@ -95,6 +128,10 @@ static void publish_dashboard_state(const p4_uac2_stats_t *usb)
         .pedalboard_enabled = pedalboard_requested != 0U,
         .pedalboard_forced = !windows_owner,
         .pedalboard_syncing = pedalboard_requested != pedalboard_confirmed,
+        .auto_switch_views = __atomic_load_n(
+            &s_auto_switch_views, __ATOMIC_ACQUIRE) != 0U,
+        .transport_profile = (uint8_t)transport_profile,
+        .transport_mode = (uint8_t)transport_mode,
         .rate_syncing = confirmed_rate != requested_rate
                         || usb->sample_rate != requested_rate,
         .rate_conflict = usb->rate_conflict,
@@ -163,6 +200,22 @@ static void control_task(void *argument)
                     command.capture_channel_mask,
                     command.playback_channel_mask);
             }
+            if (command.set_auto_switch_views) {
+                __atomic_store_n(&s_auto_switch_views,
+                                 command.auto_switch_views ? 1U : 0U,
+                                 __ATOMIC_RELEASE);
+                save_auto_switch_views();
+                ESP_LOGI(TAG, "automatic view switching %s",
+                         command.auto_switch_views ? "enabled" : "disabled");
+            }
+            if (command.set_transport_profile) {
+                const esp_err_t result = p4_audio_control_set_transport_profile(
+                    (p4_audio_transport_mode_t)command.transport_profile);
+                if (result != ESP_OK) {
+                    ESP_LOGW(TAG, "transport profile rejected: %s",
+                             esp_err_to_name(result));
+                }
+            }
             if (command.set_sample_rate) {
                 if (!windows_owner
                     && spi_audio_rate_is_supported(command.sample_rate)) {
@@ -227,6 +280,25 @@ esp_err_t p4_audio_control_prepare(void)
             s_playback_channel_mask = stored_playback_mask &
                                       SPI_AUDIO_CONTROL_CHANNEL_MASK;
         }
+        uint8_t stored_auto_switch = 1U;
+        const esp_err_t auto_result = nvs_get_u8(
+            s_settings_handle, "auto_views", &stored_auto_switch);
+        if (auto_result == ESP_OK) {
+            s_auto_switch_views = stored_auto_switch != 0U;
+        } else if (auto_result != ESP_ERR_NVS_NOT_FOUND) {
+            ESP_LOGW(TAG, "automatic view preference ignored: %s",
+                     esp_err_to_name(auto_result));
+        }
+        uint8_t stored_transport = P4_AUDIO_TRANSPORT_BALANCED;
+        const esp_err_t transport_result = nvs_get_u8(
+            s_settings_handle, "transport", &stored_transport);
+        if (transport_result == ESP_OK
+            && stored_transport <= P4_AUDIO_TRANSPORT_LOW_LATENCY) {
+            s_transport_profile = stored_transport;
+        } else if (transport_result != ESP_ERR_NVS_NOT_FOUND) {
+            ESP_LOGW(TAG, "transport preference ignored: %s",
+                     esp_err_to_name(transport_result));
+        }
     } else {
         ESP_LOGW(TAG, "NVS unavailable; local rate will not persist: %s",
                  esp_err_to_name(result));
@@ -255,6 +327,39 @@ esp_err_t p4_audio_control_start(void)
 bool p4_audio_control_pedalboard_requested(void)
 {
     return __atomic_load_n(&s_pedalboard_requested, __ATOMIC_ACQUIRE) != 0U;
+}
+
+p4_audio_transport_mode_t p4_audio_control_transport_profile(void)
+{
+    const uint32_t profile = __atomic_load_n(
+        &s_transport_profile, __ATOMIC_ACQUIRE);
+    return profile == P4_AUDIO_TRANSPORT_LOW_LATENCY
+               ? P4_AUDIO_TRANSPORT_LOW_LATENCY
+               : P4_AUDIO_TRANSPORT_BALANCED;
+}
+
+p4_audio_transport_mode_t p4_audio_control_transport_mode(void)
+{
+    if (!p4_uac2_capture_active() && !p4_uac2_playback_active()) {
+        return P4_AUDIO_TRANSPORT_LOCAL;
+    }
+    return p4_audio_control_transport_profile();
+}
+
+esp_err_t p4_audio_control_set_transport_profile(
+    p4_audio_transport_mode_t profile)
+{
+    if (profile != P4_AUDIO_TRANSPORT_BALANCED
+        && profile != P4_AUDIO_TRANSPORT_LOW_LATENCY) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    __atomic_store_n(&s_transport_profile, (uint32_t)profile,
+                     __ATOMIC_RELEASE);
+    save_transport_profile();
+    ESP_LOGI(TAG, "transport profile %s",
+             profile == P4_AUDIO_TRANSPORT_LOW_LATENCY
+                 ? "LOW LATENCY" : "BALANCED");
+    return ESP_OK;
 }
 
 uint8_t p4_audio_control_capture_channel_mask(void)
@@ -309,6 +414,10 @@ void p4_audio_control_get_snapshot(p4_audio_control_snapshot_t *snapshot)
         &s_pedalboard_requested, __ATOMIC_ACQUIRE) != 0U;
     snapshot->pedalboard_confirmed = __atomic_load_n(
         &s_pedalboard_confirmed, __ATOMIC_ACQUIRE) != 0U;
+    snapshot->auto_switch_views = __atomic_load_n(
+        &s_auto_switch_views, __ATOMIC_ACQUIRE) != 0U;
+    snapshot->transport_profile = p4_audio_control_transport_profile();
+    snapshot->transport_mode = p4_audio_control_transport_mode();
     snapshot->capture_channel_mask =
         p4_audio_control_capture_channel_mask();
     snapshot->playback_channel_mask =

@@ -41,6 +41,8 @@ typedef struct {
     uint64_t sequence_errors;
     uint64_t format_errors;
     uint16_t seed_status;
+    uint16_t seed_frames;
+    uint8_t seed_flags;
     uint32_t seed_sessions;
     uint32_t echoed_frames;
     SpiAudioHeader last_bad_header;
@@ -70,10 +72,11 @@ static uint32_t s_expected_rx_sequence;
 static bool s_have_rx_sequence;
 static uint32_t s_spi_pause_until;
 static uint32_t s_ready_generation;
-static playback_result_t playback_ring_read_block(int32_t *destination)
+static playback_result_t playback_ring_read_block(int32_t *destination,
+                                                  uint16_t frames)
 {
-    const size_t frames = p4_uac2_playback_read(destination, SPI_AUDIO_FRAMES);
-    if (frames == SPI_AUDIO_FRAMES) return PLAYBACK_AUDIO;
+    const size_t read = p4_uac2_playback_read(destination, frames);
+    if (read == frames) return PLAYBACK_AUDIO;
     return p4_uac2_playback_active() ? PLAYBACK_XRUN_SILENCE : PLAYBACK_IDLE_SILENCE;
 }
 
@@ -92,10 +95,28 @@ static uint32_t sample_magnitude(int32_t sample)
     return (uint32_t)(sample < 0 ? -sample : sample);
 }
 
-static void fill_tx_header(uint8_t flags, uint16_t status)
+static uint16_t active_transport_frames(p4_audio_transport_mode_t mode,
+                                        uint32_t sample_rate)
+{
+    if (mode == P4_AUDIO_TRANSPORT_LOCAL
+        || mode == P4_AUDIO_TRANSPORT_LOW_LATENCY) {
+        return SPI_AUDIO_FRAMES;
+    }
+    return spi_audio_balanced_frames(sample_rate);
+}
+
+static void fill_tx_header(uint8_t flags, uint16_t status, uint16_t frames,
+                           p4_audio_transport_mode_t mode)
 {
     if (p4_audio_control_pedalboard_requested()) {
         flags |= SPI_AUDIO_FLAG_PEDALBOARD_ENABLED;
+    }
+    if (mode == P4_AUDIO_TRANSPORT_LOCAL) {
+        flags |= SPI_AUDIO_FLAG_CONTROL_ONLY;
+    }
+    if (p4_audio_control_transport_profile()
+        == P4_AUDIO_TRANSPORT_LOW_LATENCY) {
+        flags |= SPI_AUDIO_FLAG_LOW_LATENCY;
     }
     s_spi_tx.header.magic = SPI_AUDIO_MAGIC;
     s_spi_tx.header.version = SPI_AUDIO_VERSION;
@@ -103,11 +124,11 @@ static void fill_tx_header(uint8_t flags, uint16_t status)
     s_spi_tx.header.header_bytes = SPI_AUDIO_HEADER_BYTES;
     s_spi_tx.header.sequence = s_tx_sequence;
     s_spi_tx.header.sample_rate = p4_uac2_requested_rate();
-    s_spi_tx.header.frames = SPI_AUDIO_FRAMES;
+    s_spi_tx.header.frames = frames;
     s_spi_tx.header.channels = SPI_AUDIO_CHANNELS;
     s_spi_tx.header.valid_bits = SPI_AUDIO_VALID_BITS;
     s_spi_tx.header.sample_counter = s_tx_sample_counter;
-    s_spi_tx.header.payload_bytes = SPI_AUDIO_PAYLOAD_BYTES;
+    s_spi_tx.header.payload_bytes = spi_audio_payload_bytes(frames);
     s_spi_tx.header.status = spi_audio_control_with_channel_masks(
         status, p4_audio_control_capture_channel_mask(),
         p4_audio_control_playback_channel_mask());
@@ -139,8 +160,9 @@ static void validate_rx_frame(void)
     const bool update_live_meters = audio_dashboard_needs_live_audio();
     const uint8_t capture_mask = p4_audio_control_capture_channel_mask();
     const uint8_t playback_mask = p4_audio_control_playback_channel_mask();
+    const uint16_t frames = s_spi_rx.header.frames;
     for (size_t sample = 0;
-         sample < SPI_AUDIO_FRAMES * SPI_AUDIO_CHANNELS; ++sample) {
+         sample < (size_t)frames * SPI_AUDIO_CHANNELS; ++sample) {
         if (((uint32_t)s_spi_rx.samples[sample] & 0xFFU) != 0U) {
             format_error = true;
         }
@@ -174,6 +196,8 @@ static void validate_rx_frame(void)
         ++s_stats.format_errors;
     }
     s_stats.seed_status = s_spi_rx.header.status;
+    s_stats.seed_frames = s_spi_rx.header.frames;
+    s_stats.seed_flags = s_spi_rx.header.flags;
     if (!memcmp(&s_spi_rx, &s_spi_tx, sizeof(s_spi_rx))) ++s_stats.echoed_frames;
     portEXIT_CRITICAL(&s_stats_mux);
 
@@ -200,7 +224,9 @@ static void validate_rx_frame(void)
     }
     p4_uac2_source_rate(s_spi_rx.header.sample_rate,
         (s_spi_rx.header.flags & SPI_AUDIO_FLAG_SESSION_START) != 0);
-    p4_uac2_capture_write(s_spi_rx.samples, SPI_AUDIO_FRAMES);
+    if ((s_spi_rx.header.flags & SPI_AUDIO_FLAG_CONTROL_ONLY) == 0U) {
+        p4_uac2_capture_write(s_spi_rx.samples, frames);
+    }
 }
 
 static void IRAM_ATTR seed_ready_isr(void *argument)
@@ -315,13 +341,24 @@ static void spi_transport_task(void *argument)
         }
         consumed_ready = generation;
 
-        const playback_result_t playback =
-            playback_ring_read_block(s_spi_tx.samples);
+        const p4_audio_transport_mode_t mode =
+            p4_audio_control_transport_mode();
+        const uint32_t requested_rate = p4_uac2_requested_rate();
+        const uint16_t frames = active_transport_frames(mode, requested_rate);
+        const playback_result_t playback = mode == P4_AUDIO_TRANSPORT_LOCAL
+            ? PLAYBACK_IDLE_SILENCE
+            : playback_ring_read_block(s_spi_tx.samples, frames);
+        if (mode == P4_AUDIO_TRANSPORT_LOCAL) {
+            /* The physical DMA frame is always 544 bytes. Clear its complete
+             * sample area so LOCAL never clocks stale audio in the unused
+             * 32-frame tail either. At ~50 Hz this cost is negligible. */
+            memset(s_spi_tx.samples, 0, sizeof(s_spi_tx.samples));
+        }
         const uint8_t playback_mask =
             p4_audio_control_playback_channel_mask();
         if (playback_mask != SPI_AUDIO_CONTROL_CHANNEL_MASK) {
             for (size_t sample = 0;
-                 sample < SPI_AUDIO_FRAMES * SPI_AUDIO_CHANNELS; ++sample) {
+                 sample < (size_t)frames * SPI_AUDIO_CHANNELS; ++sample) {
                 const unsigned channel = sample % SPI_AUDIO_CHANNELS;
                 if ((playback_mask & (1U << channel)) == 0U) {
                     s_spi_tx.samples[sample] = 0;
@@ -337,11 +374,9 @@ static void spi_transport_task(void *argument)
             flags |= SPI_AUDIO_FLAG_XRUN;
             status |= SPI_AUDIO_STATUS_PLAYBACK_UNDERRUN;
         }
-        fill_tx_header(flags, status);
-        memset(&s_spi_rx, 0, sizeof(s_spi_rx));
-
+        fill_tx_header(flags, status, frames, mode);
         spi_transaction_t transaction = {
-            // 288-byte protocol frames are not a multiple of the P4's
+            // 544-byte protocol frames are not a multiple of the P4's
             // 64-byte cache line. Let ESP-IDF use its aligned DMA bounce
             // buffer; declaring manual alignment here is invalid on rev 1.x.
             .flags = 0,
@@ -375,7 +410,7 @@ static void spi_transport_task(void *argument)
         }
 
         ++s_tx_sequence;
-        s_tx_sample_counter += SPI_AUDIO_FRAMES;
+        s_tx_sample_counter += frames;
         portENTER_CRITICAL(&s_stats_mux);
         ++s_stats.spi_transactions;
         portEXIT_CRITICAL(&s_stats_mux);
@@ -385,6 +420,17 @@ static void spi_transport_task(void *argument)
 
 static void run_format_self_test(void)
 {
+    if (sizeof(SpiAudioFrame) != SPI_AUDIO_FRAME_BYTES
+        || SPI_AUDIO_FRAME_BYTES != 544U
+        || spi_audio_balanced_frames(44100U) != 32U
+        || spi_audio_balanced_frames(48000U) != 32U
+        || spi_audio_balanced_frames(88200U) != 64U
+        || spi_audio_balanced_frames(96000U) != 64U
+        || spi_audio_payload_bytes(32U) != 256U
+        || spi_audio_payload_bytes(64U) != 512U) {
+        ESP_LOGE(TAG, "transport geometry self-test failed");
+        abort();
+    }
     static const uint8_t vectors[][4] = {
         {0x00, 0x00, 0x00, 0x00},
         {0x00, 0xFF, 0xFF, 0x7F},
@@ -403,7 +449,7 @@ static void run_format_self_test(void)
             abort();
         }
     }
-    ESP_LOGI(TAG, "PCM24-in-32 and transport layout self-test: PASS");
+    ESP_LOGI(TAG, "PCM24-in-32 and transport geometry self-test: PASS");
 }
 
 static void seed_uart_task(void *argument)
@@ -476,9 +522,11 @@ static void log_stats(void)
                                           (uint32_t)snapshot.crc_errors);
     ESP_LOGI(TAG, "spi=%" PRIu64 " err=%" PRIu64
              " frame_err[h/c/s/f]=%" PRIu64 "/%" PRIu64 "/%" PRIu64 "/%" PRIu64
-             " seed_status=0x%04x sessions=%" PRIu32 " echoed=%" PRIu32,
+             " seed_status=0x%04x wire=%u/%u sessions=%" PRIu32 " echoed=%" PRIu32,
              snapshot.spi_transactions, snapshot.spi_errors, snapshot.header_errors,
-             snapshot.crc_errors, snapshot.sequence_errors, snapshot.format_errors, snapshot.seed_status, snapshot.seed_sessions, snapshot.echoed_frames);
+             snapshot.crc_errors, snapshot.sequence_errors, snapshot.format_errors,
+             snapshot.seed_status, snapshot.seed_frames, snapshot.seed_flags,
+             snapshot.seed_sessions, snapshot.echoed_frames);
     ESP_LOGI(TAG, "format rate=%" PRIu32 " usb=%" PRIu32 "/%" PRIu32
              " seed=%" PRIu32 " bits=%" PRIu32 "/%" PRIu32
              " prefill=%" PRIu32 " budget=%" PRIu32 "ms changes=%" PRIu32 " epochs=%" PRIu32,
@@ -488,10 +536,12 @@ static void log_stats(void)
     p4_audio_control_snapshot_t control;
     p4_audio_control_get_snapshot(&control);
     ESP_LOGI(TAG, "mode owner=%s local=%" PRIu32
-             " pedalboard=%lu/%lu channels=%u/%u usb[c/m/s/alive]=%d/%d/%d/%d sof_age=%" PRIu32
+             " transport=%u/%u pedalboard=%lu/%lu channels=%u/%u usb[c/m/s/alive]=%d/%d/%d/%d sof_age=%" PRIu32
              " conflict=%d/%" PRIu32,
              control.windows_rate_owner ? "windows" : "local",
              control.local_sample_rate,
+             (unsigned)control.transport_profile,
+             (unsigned)control.transport_mode,
              (unsigned long)control.pedalboard_requested,
              (unsigned long)control.pedalboard_confirmed,
              control.capture_channel_mask, control.playback_channel_mask,
@@ -596,6 +646,14 @@ static void console_task(void *argument)
                 __atomic_store_n(&s_spi_pause_until, xTaskGetTickCount() + pdMS_TO_TICKS(ms), __ATOMIC_RELEASE);
                 ESP_LOGI(TAG, "SPI pause test: %u ms", ms);
             }
+        } else if (!strcmp(line, "transport balanced")) {
+            ESP_LOGI(TAG, "transport command: %s", esp_err_to_name(
+                p4_audio_control_set_transport_profile(
+                    P4_AUDIO_TRANSPORT_BALANCED)));
+        } else if (!strcmp(line, "transport low")) {
+            ESP_LOGI(TAG, "transport command: %s", esp_err_to_name(
+                p4_audio_control_set_transport_profile(
+                    P4_AUDIO_TRANSPORT_LOW_LATENCY)));
         } else if (!strncmp(line, "channels ", 9)) {
             char *separator = NULL;
             const unsigned capture =
@@ -610,7 +668,7 @@ static void console_task(void *argument)
                 ESP_LOGI(TAG, "channels command: %s",
                          esp_err_to_name(result));
             }
-        } else if (line[0]) ESP_LOGI(TAG, "commands: buffer 1|2|4; channels CAPTURE_MASK PLAYBACK_MASK (0..3); seed reset; seed boot; seed stats; spi pause 1..10000 (idle only)");
+        } else if (line[0]) ESP_LOGI(TAG, "commands: buffer 1|2|4; transport balanced|low; channels CAPTURE_MASK PLAYBACK_MASK (0..3); seed reset; seed boot; seed stats; spi pause 1..10000 (idle only)");
     }
 }
 
@@ -646,6 +704,6 @@ void seed3_spi_transport_log_ready(void)
 {
     ESP_LOGI(TAG,
              "ready: UAC2 2 IN + 2 OUT, 44.1/48/88.2/96 kHz, packed PCM24 only, USB HS; "
-             "Seed3 SPI transport at %d MHz",
+             "Seed3 SPI transport at %d MHz; BALANCED default, LOW LATENCY selectable, LOCAL automatic",
              SPI_CLOCK_HZ / 1000000);
 }

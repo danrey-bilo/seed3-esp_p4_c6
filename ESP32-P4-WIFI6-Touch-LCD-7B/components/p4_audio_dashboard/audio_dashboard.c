@@ -25,6 +25,7 @@ enum {
 typedef enum {
     DASHBOARD_PAGE_MONITOR = 0,
     DASHBOARD_PAGE_PEDALBOARD = 1,
+    DASHBOARD_PAGE_SETTINGS = 2,
     DASHBOARD_PAGE_COUNT,
 } dashboard_page_t;
 
@@ -77,6 +78,7 @@ static const uint32_t s_pedal_rates[] = {44100U, 48000U, 88200U, 96000U};
 static uint8_t s_pedal_rate_index = 1;
 static lv_obj_t *s_monitor_page;
 static lv_obj_t *s_pedalboard_page;
+static lv_obj_t *s_settings_page;
 static lv_obj_t *s_window_overlay;
 static lv_obj_t *s_window_sheet;
 static lv_obj_t *s_window_buttons[DASHBOARD_PAGE_COUNT];
@@ -94,6 +96,10 @@ static lv_obj_t *s_pedal_cpu_bar;
 static lv_obj_t *s_pedal_cpu_value;
 static lv_obj_t *s_pedalboard_switch;
 static lv_obj_t *s_pedalboard_mode;
+static lv_obj_t *s_pedalboard_control_panel;
+static lv_obj_t *s_auto_switch_views;
+static lv_obj_t *s_transport_buttons[2];
+static lv_obj_t *s_transport_active;
 static lv_obj_t *s_io_settings_overlay;
 static lv_obj_t *s_io_settings_title;
 static lv_obj_t *s_io_settings_rate;
@@ -110,7 +116,7 @@ static volatile uint32_t s_buffer_ms = 1U;
 static volatile uint32_t s_status_flags;
 static volatile uint32_t s_spi_errors;
 static volatile uint32_t s_crc_errors;
-static volatile uint32_t s_active_page = DASHBOARD_PAGE_MONITOR;
+static volatile uint32_t s_active_page = DASHBOARD_PAGE_PEDALBOARD;
 static volatile uint32_t s_command_flags;
 static volatile uint32_t s_command_rate = 48000U;
 static volatile uint32_t s_command_pedalboard = 1U;
@@ -118,11 +124,22 @@ static volatile uint32_t s_capture_channel_mask = 3U;
 static volatile uint32_t s_playback_channel_mask = 3U;
 static volatile uint32_t s_command_capture_mask = 3U;
 static volatile uint32_t s_command_playback_mask = 3U;
+static volatile uint32_t s_command_auto_switch_views = 1U;
+static volatile uint32_t s_transport_profile =
+    AUDIO_DASHBOARD_TRANSPORT_BALANCED;
+static volatile uint32_t s_transport_mode =
+    AUDIO_DASHBOARD_TRANSPORT_LOCAL;
+static volatile uint32_t s_command_transport_profile =
+    AUDIO_DASHBOARD_TRANSPORT_BALANCED;
 static lv_point_t s_touch_start;
 static bool s_touch_tracking;
 static bool s_touch_was_pressed;
 static bool s_touch_gesture_consumed;
 static bool s_updating_pedalboard_switch;
+static bool s_updating_auto_switch;
+static bool s_auto_page_state_known;
+static bool s_last_host_connected;
+static bool s_last_auto_switch;
 
 static char s_cpu_text[8] = "0%";
 static char s_sample_rate_text[12] = "--";
@@ -146,12 +163,15 @@ enum {
     STATUS_RATE_SYNCING = 1U << 9,
     STATUS_RATE_CONFLICT = 1U << 10,
     STATUS_RATE_VALID = 1U << 11,
+    STATUS_AUTO_SWITCH_VIEWS = 1U << 12,
 };
 
 enum {
     COMMAND_SET_RATE = 1U << 0,
     COMMAND_SET_PEDALBOARD = 1U << 1,
     COMMAND_SET_CHANNEL_MASKS = 1U << 2,
+    COMMAND_SET_AUTO_SWITCH_VIEWS = 1U << 3,
+    COMMAND_SET_TRANSPORT_PROFILE = 1U << 4,
 };
 
 static void close_io_settings(void);
@@ -200,6 +220,22 @@ static void request_channel_masks(void)
     __atomic_store_n(&s_command_capture_mask, capture_mask, __ATOMIC_RELEASE);
     __atomic_store_n(&s_command_playback_mask, playback_mask, __ATOMIC_RELEASE);
     __atomic_fetch_or(&s_command_flags, COMMAND_SET_CHANNEL_MASKS,
+                      __ATOMIC_RELEASE);
+}
+
+static void request_auto_switch_views(bool enabled)
+{
+    __atomic_store_n(&s_command_auto_switch_views, enabled ? 1U : 0U,
+                     __ATOMIC_RELEASE);
+    __atomic_fetch_or(&s_command_flags, COMMAND_SET_AUTO_SWITCH_VIEWS,
+                      __ATOMIC_RELEASE);
+}
+
+static void request_transport_profile(uint8_t profile)
+{
+    if (profile > AUDIO_DASHBOARD_TRANSPORT_LOW_LATENCY) return;
+    __atomic_store_n(&s_command_transport_profile, profile, __ATOMIC_RELEASE);
+    __atomic_fetch_or(&s_command_flags, COMMAND_SET_TRANSPORT_PROFILE,
                       __ATOMIC_RELEASE);
 }
 
@@ -292,7 +328,9 @@ static lv_obj_t *make_chip(lv_obj_t *screen,
 
 static void update_window_button_styles(dashboard_page_t page)
 {
-    const uint32_t accents[DASHBOARD_PAGE_COUNT] = {0x42e8bd, 0xffa85c};
+    const uint32_t accents[DASHBOARD_PAGE_COUNT] = {
+        0x42e8bd, 0xffa85c, 0xb596ff
+    };
     for (unsigned i = 0; i < DASHBOARD_PAGE_COUNT; ++i) {
         lv_obj_t *button = s_window_buttons[i];
         if (button == NULL) {
@@ -329,21 +367,30 @@ static void open_window_menu(void)
 
 static void set_active_page(dashboard_page_t page)
 {
+    static const char *const names[DASHBOARD_PAGE_COUNT] = {
+        "monitor", "pedalboard", "settings"
+    };
     if (page >= DASHBOARD_PAGE_COUNT) {
         return;
     }
     close_io_settings();
+    lv_obj_add_flag(s_monitor_page, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(s_pedalboard_page, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_flag(s_settings_page, LV_OBJ_FLAG_HIDDEN);
     if (page == DASHBOARD_PAGE_MONITOR) {
         lv_obj_clear_flag(s_monitor_page, LV_OBJ_FLAG_HIDDEN);
-        lv_obj_add_flag(s_pedalboard_page, LV_OBJ_FLAG_HIDDEN);
-    } else {
-        lv_obj_add_flag(s_monitor_page, LV_OBJ_FLAG_HIDDEN);
+    } else if (page == DASHBOARD_PAGE_PEDALBOARD) {
         lv_obj_clear_flag(s_pedalboard_page, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_clear_flag(s_settings_page, LV_OBJ_FLAG_HIDDEN);
+    }
+    if (page != DASHBOARD_PAGE_MONITOR) {
         for (unsigned i = 0; i < DASHBOARD_CHANNELS; ++i) {
             __atomic_store_n(&s_pending_peak[i], 0U, __ATOMIC_RELEASE);
         }
     }
     __atomic_store_n(&s_active_page, (uint32_t)page, __ATOMIC_RELEASE);
+    ESP_LOGI(TAG, "active view: %s", names[page]);
     update_window_button_styles(page);
     close_window_menu();
 }
@@ -714,15 +761,16 @@ static void pedalboard_switch_event(lv_event_t *event)
 
 static void create_pedalboard_control(lv_obj_t *parent)
 {
-    lv_obj_t *panel = make_panel(parent, 450, 14, 240, 60,
-                                 0x0e1c2b, 0x28405a, 15);
-    style_card(panel);
-    make_label(panel, 14, 8, 136, 17, "PEDALBOARD",
+    s_pedalboard_control_panel = make_panel(
+        parent, 450, 14, 240, 60, 0x0e1c2b, 0x28405a, 15);
+    style_card(s_pedalboard_control_panel);
+    make_label(s_pedalboard_control_panel, 14, 8, 136, 17, "PEDALBOARD",
                &lv_font_montserrat_12, 0x91a4b8, LV_TEXT_ALIGN_LEFT);
     s_pedalboard_mode = make_label(
-        panel, 14, 34, 142, 16, s_pedalboard_mode_text,
+        s_pedalboard_control_panel, 14, 34, 142, 16,
+        s_pedalboard_mode_text,
         &lv_font_montserrat_12, 0x48e0a8, LV_TEXT_ALIGN_LEFT);
-    s_pedalboard_switch = lv_switch_create(panel);
+    s_pedalboard_switch = lv_switch_create(s_pedalboard_control_panel);
     lv_obj_set_pos(s_pedalboard_switch, 166, 15);
     lv_obj_set_size(s_pedalboard_switch, 60, 30);
     lv_obj_set_style_bg_color(s_pedalboard_switch, color(0x26394d),
@@ -781,11 +829,101 @@ static void create_pedalboard(lv_obj_t *screen)
     make_label(empty, 20, 92, 280, 20, "EFFECT NODES WILL APPEAR HERE",
                &lv_font_montserrat_12, 0x7389a0, LV_TEXT_ALIGN_CENTER);
 
-    make_label(s_pedalboard_page, 82, 552, 860, 20,
-               "HOLD IN / OUT FOR CHANNEL AND SAMPLE-RATE SETTINGS",
-               &lv_font_montserrat_12, 0x647a92, LV_TEXT_ALIGN_CENTER);
     create_io_settings_overlay(s_pedalboard_page);
     lv_obj_add_flag(s_pedalboard_page, LV_OBJ_FLAG_HIDDEN);
+}
+
+static void auto_switch_views_event(lv_event_t *event)
+{
+    if (s_updating_auto_switch) return;
+    lv_obj_t *control = lv_event_get_target_obj(event);
+    request_auto_switch_views(
+        lv_obj_has_state(control, LV_STATE_CHECKED));
+}
+
+static void transport_profile_event(lv_event_t *event)
+{
+    request_transport_profile((uint8_t)(uintptr_t)lv_event_get_user_data(event));
+}
+
+static void create_settings(lv_obj_t *screen)
+{
+    s_settings_page = make_panel(screen, 0, 0, DASHBOARD_WIDTH,
+                                 DASHBOARD_HEIGHT, 0x07111f, 0x07111f, 0);
+    make_panel(s_settings_page, 0, 0, DASHBOARD_WIDTH, 5,
+               0xb596ff, 0xb596ff, 0);
+    make_label(s_settings_page, 32, 20, 300, 36, "SETTINGS",
+               &lv_font_montserrat_28, 0xf4f8ff, LV_TEXT_ALIGN_LEFT);
+    lv_obj_t *subtitle = make_label(
+        s_settings_page, 34, 57, 390, 18, "SYSTEM AND DISPLAY BEHAVIOR",
+        &lv_font_montserrat_12, 0x7589a3, LV_TEXT_ALIGN_LEFT);
+    lv_obj_set_style_text_letter_space(subtitle, 2, LV_PART_MAIN);
+    make_chip(s_settings_page, 848, 120, "SYSTEM");
+
+    lv_obj_t *card = make_panel(s_settings_page, 80, 108, 864, 178,
+                                0x0d1928, 0x2d4057, 18);
+    style_card(card);
+    make_panel(card, 0, 0, 5, 178, 0xb596ff, 0xb596ff, 2);
+    make_label(card, 32, 24, 570, 28, "AUTO WINDOW SWITCH",
+               &lv_font_montserrat_20, 0xf1f5fb, LV_TEXT_ALIGN_LEFT);
+    lv_obj_t *description = make_label(
+        card, 32, 62, 650, 48,
+        "PC CONNECTED: OPEN MONITOR\nPC DISCONNECTED: OPEN PEDALBOARD",
+        &lv_font_montserrat_14, 0x8ea2b7, LV_TEXT_ALIGN_LEFT);
+    lv_label_set_long_mode(description, LV_LABEL_LONG_WRAP);
+    lv_obj_set_style_text_line_space(description, 8, LV_PART_MAIN);
+    make_label(card, 32, 137, 650, 18,
+               "MANUAL WINDOW SELECTION REMAINS AVAILABLE",
+               &lv_font_montserrat_12, 0x607890, LV_TEXT_ALIGN_LEFT);
+
+    s_auto_switch_views = lv_switch_create(card);
+    lv_obj_set_pos(s_auto_switch_views, 754, 66);
+    lv_obj_set_size(s_auto_switch_views, 72, 36);
+    lv_obj_set_style_bg_color(s_auto_switch_views, color(0x26394d),
+                              LV_PART_MAIN);
+    lv_obj_set_style_bg_color(s_auto_switch_views, color(0xb596ff),
+                              LV_PART_INDICATOR);
+    lv_obj_set_style_bg_color(s_auto_switch_views, color(0xf1f4f8),
+                              LV_PART_KNOB);
+    lv_obj_add_state(s_auto_switch_views, LV_STATE_CHECKED);
+    lv_obj_add_event_cb(s_auto_switch_views, auto_switch_views_event,
+                        LV_EVENT_VALUE_CHANGED, NULL);
+
+    lv_obj_t *transport = make_panel(s_settings_page, 80, 310, 864, 214,
+                                     0x0d1928, 0x2d4057, 18);
+    style_card(transport);
+    make_panel(transport, 0, 0, 5, 214, 0x48e0a8, 0x48e0a8, 2);
+    make_label(transport, 32, 22, 420, 28, "SPI TRANSPORT PROFILE",
+               &lv_font_montserrat_20, 0xf1f5fb, LV_TEXT_ALIGN_LEFT);
+    s_transport_active = make_label(
+        transport, 476, 26, 350, 22, "ACTIVE: LOCAL",
+        &lv_font_montserrat_14, 0x48e0a8, LV_TEXT_ALIGN_RIGHT);
+    make_label(transport, 32, 60, 800, 36,
+               "BALANCED SAVES SEED CPU AT 88.2/96 kHz.\nLOW LATENCY KEEPS 32-FRAME AUDIO BLOCKS.",
+               &lv_font_montserrat_12, 0x8ea2b7, LV_TEXT_ALIGN_LEFT);
+    static const char *const names[2] = {"BALANCED", "LOW LATENCY"};
+    static const char *const details[2] = {
+        "32 / 64 FRAMES", "32 FRAMES"
+    };
+    for (uint8_t profile = 0; profile < 2; ++profile) {
+        lv_obj_t *button = lv_button_create(transport);
+        lv_obj_set_pos(button, 32 + (int)profile * 408, 118);
+        lv_obj_set_size(button, 384, 66);
+        lv_obj_set_style_bg_color(button, color(0x17283a), LV_PART_MAIN);
+        lv_obj_set_style_bg_opa(button, LV_OPA_COVER, LV_PART_MAIN);
+        lv_obj_set_style_border_color(button, color(0x30465d), LV_PART_MAIN);
+        lv_obj_set_style_border_width(button, 1, LV_PART_MAIN);
+        lv_obj_set_style_radius(button, 12, LV_PART_MAIN);
+        lv_obj_set_style_shadow_width(button, 0, LV_PART_MAIN);
+        make_label(button, 18, 10, 220, 22, names[profile],
+                   &lv_font_montserrat_16, 0xf2f6fb, LV_TEXT_ALIGN_LEFT);
+        make_label(button, 18, 38, 220, 16, details[profile],
+                   &lv_font_montserrat_12, 0x7d92a9, LV_TEXT_ALIGN_LEFT);
+        lv_obj_add_event_cb(button, transport_profile_event,
+                            LV_EVENT_CLICKED, (void *)(uintptr_t)profile);
+        s_transport_buttons[profile] = button;
+    }
+    lv_obj_add_flag(s_settings_page, LV_OBJ_FLAG_HIDDEN);
 }
 
 static lv_obj_t *create_window_button(lv_obj_t *parent,
@@ -836,10 +974,12 @@ static void create_window_menu(lv_obj_t *screen)
     make_label(s_window_sheet, 34, 58, 360, 18, "CHOOSE THE ACTIVE VIEW",
                &lv_font_montserrat_12, 0x71879e, LV_TEXT_ALIGN_LEFT);
 
-    create_window_button(s_window_sheet, DASHBOARD_PAGE_MONITOR, 192,
+    create_window_button(s_window_sheet, DASHBOARD_PAGE_MONITOR, 48,
                          "MONITOR", "METERS / USB / CPU", 0x42e8bd);
-    create_window_button(s_window_sheet, DASHBOARD_PAGE_PEDALBOARD, 506,
+    create_window_button(s_window_sheet, DASHBOARD_PAGE_PEDALBOARD, 369,
                          "PEDALBOARD", "ROUTING / EFFECTS", 0xffa85c);
+    create_window_button(s_window_sheet, DASHBOARD_PAGE_SETTINGS, 690,
+                         "SETTINGS", "SYSTEM / DISPLAY", 0xb596ff);
 
     lv_obj_t *close = lv_button_create(s_window_sheet);
     lv_obj_set_pos(close, 856, 24);
@@ -854,7 +994,7 @@ static void create_window_menu(lv_obj_t *screen)
     make_centered_label(close, 0, 0, 136, 44, "CLOSE",
                         &lv_font_montserrat_12, 0xb7c6d6);
     lv_obj_add_event_cb(close, close_button_event, LV_EVENT_CLICKED, NULL);
-    update_window_button_styles(DASHBOARD_PAGE_MONITOR);
+    update_window_button_styles(DASHBOARD_PAGE_PEDALBOARD);
     lv_obj_add_flag(s_window_overlay, LV_OBJ_FLAG_HIDDEN);
 }
 
@@ -1052,8 +1192,10 @@ static void create_dashboard(void)
     lv_obj_set_style_text_letter_space(s_footer, 1, LV_PART_MAIN);
 
     create_pedalboard(screen);
+    create_settings(screen);
     create_window_menu(screen);
     create_touch_indicator(screen);
+    set_active_page(DASHBOARD_PAGE_PEDALBOARD);
     lv_screen_load(screen);
 }
 
@@ -1166,7 +1308,69 @@ static void update_pedalboard_status(uint32_t flags,
         LV_PART_INDICATOR);
     s_updating_pedalboard_switch = false;
 
+    /* In LOCAL the pedalboard is mandatory, so a disabled switch would only
+     * consume space and suggest a choice that does not exist. */
+    if (forced) {
+        lv_obj_add_flag(s_pedalboard_control_panel, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_clear_flag(s_pedalboard_control_panel, LV_OBJ_FLAG_HIDDEN);
+    }
+
     if (s_io_settings_target != NULL) refresh_io_settings();
+}
+
+static void update_auto_window_switch(uint32_t flags)
+{
+    const bool enabled = (flags & STATUS_AUTO_SWITCH_VIEWS) != 0U;
+    const bool host_connected = (flags & STATUS_USB_CONNECTED) != 0U;
+
+    s_updating_auto_switch = true;
+    if (enabled) {
+        lv_obj_add_state(s_auto_switch_views, LV_STATE_CHECKED);
+    } else {
+        lv_obj_clear_state(s_auto_switch_views, LV_STATE_CHECKED);
+    }
+    s_updating_auto_switch = false;
+
+    const bool transition = !s_auto_page_state_known
+                            || host_connected != s_last_host_connected;
+    const bool newly_enabled = s_auto_page_state_known
+                               && enabled && !s_last_auto_switch;
+    if (enabled && (transition || newly_enabled)) {
+        set_active_page(host_connected ? DASHBOARD_PAGE_MONITOR
+                                       : DASHBOARD_PAGE_PEDALBOARD);
+    }
+    s_auto_page_state_known = true;
+    s_last_host_connected = host_connected;
+    s_last_auto_switch = enabled;
+}
+
+static void update_transport_status(uint32_t profile, uint32_t mode)
+{
+    if (profile > AUDIO_DASHBOARD_TRANSPORT_LOW_LATENCY) {
+        profile = AUDIO_DASHBOARD_TRANSPORT_BALANCED;
+    }
+    for (uint32_t index = 0; index < 2; ++index) {
+        const bool selected = index == profile;
+        lv_obj_set_style_bg_color(
+            s_transport_buttons[index],
+            color(selected ? 0x173b3c : 0x17283a), LV_PART_MAIN);
+        lv_obj_set_style_border_color(
+            s_transport_buttons[index],
+            color(selected ? 0x48e0a8 : 0x30465d), LV_PART_MAIN);
+        lv_obj_set_style_border_width(
+            s_transport_buttons[index], selected ? 2 : 1, LV_PART_MAIN);
+    }
+    const char *active = mode == AUDIO_DASHBOARD_TRANSPORT_LOCAL
+                             ? "ACTIVE: LOCAL"
+                         : mode == AUDIO_DASHBOARD_TRANSPORT_LOW_LATENCY
+                             ? "ACTIVE: LOW LATENCY"
+                             : "ACTIVE: BALANCED";
+    lv_label_set_text(s_transport_active, active);
+    lv_obj_set_style_text_color(
+        s_transport_active,
+        color(mode == AUDIO_DASHBOARD_TRANSPORT_LOCAL ? 0xffca68 : 0x48e0a8),
+        LV_PART_MAIN);
 }
 
 static void update_status_text(void)
@@ -1179,6 +1383,8 @@ static void update_status_text(void)
     static uint32_t shown_crc_errors = UINT32_MAX;
     static uint32_t shown_capture_mask = UINT32_MAX;
     static uint32_t shown_playback_mask = UINT32_MAX;
+    static uint32_t shown_transport_profile = UINT32_MAX;
+    static uint32_t shown_transport_mode = UINT32_MAX;
 
     const uint32_t cpu = __atomic_load_n(&s_seed_cpu_percent, __ATOMIC_ACQUIRE);
     const uint32_t sample_rate =
@@ -1192,6 +1398,18 @@ static void update_status_text(void)
         &s_capture_channel_mask, __ATOMIC_ACQUIRE) & 3U;
     const uint32_t playback_mask = __atomic_load_n(
         &s_playback_channel_mask, __ATOMIC_ACQUIRE) & 3U;
+    const uint32_t transport_profile = __atomic_load_n(
+        &s_transport_profile, __ATOMIC_ACQUIRE);
+    const uint32_t transport_mode = __atomic_load_n(
+        &s_transport_mode, __ATOMIC_ACQUIRE);
+
+    const bool transport_changed = transport_profile != shown_transport_profile
+                                   || transport_mode != shown_transport_mode;
+    if (transport_changed) {
+        shown_transport_profile = transport_profile;
+        shown_transport_mode = transport_mode;
+        update_transport_status(transport_profile, transport_mode);
+    }
 
     if (capture_mask != shown_capture_mask ||
         playback_mask != shown_playback_mask) {
@@ -1264,18 +1482,24 @@ static void update_status_text(void)
                                     LV_PART_MAIN);
         lv_obj_set_style_bg_color(s_playback_status_dot, color(playback_color),
                                   LV_PART_MAIN);
+        update_auto_window_switch(flags);
     }
     if (sample_rate_changed || flags_changed) {
         update_pedalboard_status(flags, sample_rate, sample_rate_valid);
     }
-    if (buffer != shown_buffer || flags_changed ||
+    if (buffer != shown_buffer || flags_changed || transport_changed ||
         spi_errors != shown_spi_errors || crc_errors != shown_crc_errors) {
         shown_buffer = buffer;
         shown_spi_errors = spi_errors;
         shown_crc_errors = crc_errors;
+        const char *transport_name =
+            transport_mode == AUDIO_DASHBOARD_TRANSPORT_LOCAL ? "LOCAL"
+            : transport_mode == AUDIO_DASHBOARD_TRANSPORT_LOW_LATENCY ? "LOW LAT"
+                                                                      : "BALANCED";
         snprintf(s_footer_text, sizeof(s_footer_text),
-                 "CLOCK %s  |  USB AUDIO 2.0  |  2 IN / 2 OUT  |  BUFFER %lu ms  |  ERR %lu/%lu",
+                 "CLOCK %s  |  %s  |  2 IN / 2 OUT  |  BUFFER %lu ms  |  ERR %lu/%lu",
                  (flags & STATUS_PC_RATE_OWNER) ? "WINDOWS" : "LOCAL",
+                 transport_name,
                  (unsigned long)buffer, (unsigned long)spi_errors,
                  (unsigned long)crc_errors);
         lv_label_set_text_static(s_footer, s_footer_text);
@@ -1398,6 +1622,7 @@ void audio_dashboard_publish_status(const audio_dashboard_status_t *status)
     if (status->pedalboard_enabled) flags |= STATUS_PEDALBOARD_ENABLED;
     if (status->pedalboard_forced) flags |= STATUS_PEDALBOARD_FORCED;
     if (status->pedalboard_syncing) flags |= STATUS_PEDALBOARD_SYNCING;
+    if (status->auto_switch_views) flags |= STATUS_AUTO_SWITCH_VIEWS;
     if (status->rate_syncing) flags |= STATUS_RATE_SYNCING;
     if (status->rate_conflict) flags |= STATUS_RATE_CONFLICT;
     if (status->sample_rate_valid) flags |= STATUS_RATE_VALID;
@@ -1411,6 +1636,10 @@ void audio_dashboard_publish_status(const audio_dashboard_status_t *status)
                      status->capture_channel_mask & 3U, __ATOMIC_RELEASE);
     __atomic_store_n(&s_playback_channel_mask,
                      status->playback_channel_mask & 3U, __ATOMIC_RELEASE);
+    __atomic_store_n(&s_transport_profile, status->transport_profile,
+                     __ATOMIC_RELEASE);
+    __atomic_store_n(&s_transport_mode, status->transport_mode,
+                     __ATOMIC_RELEASE);
 }
 
 bool audio_dashboard_take_command(audio_dashboard_command_t *command)
@@ -1436,6 +1665,16 @@ bool audio_dashboard_take_command(audio_dashboard_command_t *command)
             &s_command_capture_mask, __ATOMIC_ACQUIRE);
         command->playback_channel_mask = (uint8_t)__atomic_load_n(
             &s_command_playback_mask, __ATOMIC_ACQUIRE);
+    }
+    if ((flags & COMMAND_SET_AUTO_SWITCH_VIEWS) != 0U) {
+        command->set_auto_switch_views = true;
+        command->auto_switch_views = __atomic_load_n(
+            &s_command_auto_switch_views, __ATOMIC_ACQUIRE) != 0U;
+    }
+    if ((flags & COMMAND_SET_TRANSPORT_PROFILE) != 0U) {
+        command->set_transport_profile = true;
+        command->transport_profile = (uint8_t)__atomic_load_n(
+            &s_command_transport_profile, __ATOMIC_ACQUIRE);
     }
     return true;
 }

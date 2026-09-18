@@ -650,10 +650,13 @@ static void usb_task(void *arg) {
             saw_sof = true;
             STORE(host_alive, 1);
             STORE(host_sof_age_ms, 0);
-        } else if (saw_sof && now_ms - last_sof_ms >= 250U && !suspended) {
+        } else if (saw_sof && now_ms - last_sof_ms >= 250U) {
             // A self-powered P4 can keep stale TinyUSB connected/mounted bits
-            // after D+/D- are physically removed. SOF progress is the actual
-            // host heartbeat and therefore the source of truth.
+            // and even the suspended bit after D+/D- are physically removed.
+            // SOF progress is the only usable host heartbeat because VBUS is
+            // intentionally cut by the data-only adapter. A genuinely
+            // suspended PC therefore hands ownership to LOCAL as well; fresh
+            // SOF restores WINDOWS ownership immediately after resume.
             STORE(host_alive, 0);
             STORE(host_sof_age_ms, now_ms - last_sof_ms);
         } else if (saw_sof) {
@@ -664,7 +667,7 @@ static void usb_task(void *arg) {
         const bool stale_attached_bus =
             ((saw_sof && now_ms - last_sof_ms >= 500U) ||
              (!saw_sof && now_ms - controller_started_ms >= 1500U)) &&
-            (tud_connected() || tud_mounted()) && !suspended;
+            (tud_connected() || tud_mounted());
         if (controller_fault || stale_attached_bus) {
             if (controller_fault) ADD(stats.controller_faults, 1);
             STORE(cap_active, 0); STORE(play_active, 0);

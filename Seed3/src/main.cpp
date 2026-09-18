@@ -25,6 +25,7 @@ uint32_t g_sample_rate = SPI_AUDIO_SAMPLE_RATE;
 constexpr std::size_t kBlockFrames      = SPI_AUDIO_FRAMES;
 constexpr std::size_t kRingBlocks       = 8U;
 constexpr std::size_t kDmaSlots         = 4U;
+constexpr uint32_t    kControlPeriodMs  = 20U;
 constexpr float       kLeftFrequency    = 997.0f;
 constexpr float       kRightFrequency   = 1501.0f;
 constexpr float       kTestAmplitude    = 0.2511886432f; // -12 dBFS peak
@@ -95,6 +96,10 @@ uint32_t g_rx_crc_errors = 0U;
 uint32_t g_rx_sequence_errors = 0U;
 uint16_t g_sticky_status = 0U;
 bool     g_pedalboard_enabled = true;
+volatile bool g_control_only = false;
+bool     g_low_latency = false;
+uint16_t g_spi_frames = SPI_AUDIO_FRAMES;
+uint32_t g_last_control_transfer_ms = 0U;
 volatile uint32_t g_capture_channel_mask = SPI_AUDIO_CONTROL_CHANNEL_MASK;
 volatile uint32_t g_playback_channel_mask = SPI_AUDIO_CONTROL_CHANNEL_MASK;
 
@@ -204,19 +209,22 @@ void AudioCallback(AudioHandle::InputBuffer  input,
         = __atomic_load_n(&g_playback_read, __ATOMIC_RELAXED);
     const uint32_t playback_write
         = __atomic_load_n(&g_playback_write, __ATOMIC_ACQUIRE);
-    const bool have_playback = playback_write != playback_read;
+    const bool control_only = __atomic_load_n(
+        &g_control_only, __ATOMIC_ACQUIRE);
+    const bool have_playback = !control_only
+                               && playback_write != playback_read;
     const AudioBlock* playback
         = have_playback ? &g_playback_ring[playback_read % kRingBlocks]
                         : nullptr;
-    if(!have_playback && playback_mask != 0U)
+    if(!control_only && !have_playback && playback_mask != 0U)
         __atomic_fetch_add(&g_playback_underruns, 1U, __ATOMIC_RELAXED);
 
     const uint32_t capture_write
         = __atomic_load_n(&g_capture_write, __ATOMIC_RELAXED);
     const uint32_t capture_read
         = __atomic_load_n(&g_capture_read, __ATOMIC_ACQUIRE);
-    const bool capture_has_space
-        = capture_write - capture_read < kRingBlocks;
+    const bool capture_has_space = !control_only
+        && capture_write - capture_read < kRingBlocks;
     AudioBlock* capture
         = capture_has_space ? &g_capture_ring[capture_write % kRingBlocks]
                             : nullptr;
@@ -224,7 +232,7 @@ void AudioCallback(AudioHandle::InputBuffer  input,
         = __atomic_load_n(&g_audio_sample_counter, __ATOMIC_RELAXED);
     if(capture != nullptr)
         capture->sample_counter = first_sample;
-    else
+    else if(!control_only)
         __atomic_fetch_add(&g_capture_overruns, 1U, __ATOMIC_RELAXED);
 
     if((capture_mask | playback_mask) == 0U)
@@ -338,6 +346,7 @@ void DmaFinished(void*, SpiHandle::Result result)
 void FillHeader(SpiAudioFrame& frame,
                 uint32_t       sequence,
                 uint32_t       sample_counter,
+                uint16_t       frames,
                 uint8_t        flags,
                 uint16_t       status)
 {
@@ -347,14 +356,14 @@ void FillHeader(SpiAudioFrame& frame,
     frame.header.header_bytes = SPI_AUDIO_HEADER_BYTES;
     frame.header.sequence = sequence;
     frame.header.sample_rate = g_sample_rate;
-    frame.header.frames = SPI_AUDIO_FRAMES;
+    frame.header.frames = frames;
     frame.header.channels = SPI_AUDIO_CHANNELS;
     frame.header.valid_bits = SPI_AUDIO_VALID_BITS;
     frame.header.sample_counter = sample_counter;
-    frame.header.payload_bytes = SPI_AUDIO_PAYLOAD_BYTES;
+    frame.header.payload_bytes = spi_audio_payload_bytes(frames);
     // Publish the already measured foreground/IRQ load in-band. This does not
     // add UART traffic or work to the audio callback and preserves the fixed
-    // 288-byte SPI frame.
+    // maximum-size SPI DMA frame.
     frame.header.status = spi_audio_status_with_cpu(status, g_cpu_permille);
     frame.header.crc32 = 0U;
 }
@@ -364,23 +373,56 @@ void StartNextTransfer()
     if(__atomic_load_n(&g_dma_active, __ATOMIC_ACQUIRE))
         return;
 
+    const bool control_only = __atomic_load_n(
+        &g_control_only, __ATOMIC_ACQUIRE);
+    const uint32_t now_ms = System::GetNow();
     const uint32_t read
         = __atomic_load_n(&g_capture_read, __ATOMIC_RELAXED);
     const uint32_t write
         = __atomic_load_n(&g_capture_write, __ATOMIC_ACQUIRE);
-    if(read == write)
+    const uint16_t frames = control_only ? SPI_AUDIO_FRAMES : g_spi_frames;
+    const uint32_t blocks = frames / SPI_AUDIO_FRAMES;
+    if(control_only)
+    {
+        if(now_ms - g_last_control_transfer_ms < kControlPeriodMs)
+            return;
+    }
+    else if(write - read < blocks)
+    {
         return;
+    }
 
     const uint32_t slot_index = g_tx_sequence % kDmaSlots;
     DmaSlot&       slot = g_dma_slots[slot_index];
-    const AudioBlock& source = g_capture_ring[read % kRingBlocks];
-    std::memset(&slot.rx, 0, sizeof(slot.rx));
-    std::memcpy(slot.tx.samples, source.samples, sizeof(slot.tx.samples));
+    uint32_t sample_counter = __atomic_load_n(
+        &g_audio_sample_counter, __ATOMIC_RELAXED);
+    if(control_only)
+    {
+        // The DMA transfer stays fixed at 544 bytes. Zero the entire sample
+        // area so LOCAL sends no stale PCM in the unused physical tail.
+        std::memset(slot.tx.samples, 0, sizeof(slot.tx.samples));
+    }
+    else
+    {
+        sample_counter = g_capture_ring[read % kRingBlocks].sample_counter;
+        for(uint32_t block = 0; block < blocks; ++block)
+        {
+            const AudioBlock& source
+                = g_capture_ring[(read + block) % kRingBlocks];
+            std::memcpy(slot.tx.samples
+                            + block * SPI_AUDIO_FRAMES * SPI_AUDIO_CHANNELS,
+                        source.samples, sizeof(source.samples));
+        }
+    }
 
     uint8_t flags = SPI_AUDIO_FLAG_VALID;
     if(g_session_start) flags |= SPI_AUDIO_FLAG_SESSION_START;
     if(kUseTestTones)
         flags |= SPI_AUDIO_FLAG_TEST_TONES;
+    if(control_only)
+        flags |= SPI_AUDIO_FLAG_CONTROL_ONLY;
+    if(g_low_latency)
+        flags |= SPI_AUDIO_FLAG_LOW_LATENCY;
     uint16_t status = g_sticky_status;
     if(g_pedalboard_enabled)
         status |= SPI_AUDIO_STATUS_PEDALBOARD_ENABLED;
@@ -397,12 +439,16 @@ void StartNextTransfer()
 
     FillHeader(slot.tx,
                g_tx_sequence,
-               source.sample_counter,
+               sample_counter,
+               frames,
                flags,
                status);
     slot.tx.header.crc32 = spi_audio_frame_crc32(&slot.tx);
 
-    __atomic_store_n(&g_capture_read, read + 1U, __ATOMIC_RELEASE);
+    if(control_only)
+        g_last_control_transfer_ms = now_ms;
+    else
+        __atomic_store_n(&g_capture_read, read + blocks, __ATOMIC_RELEASE);
     g_active_slot = slot_index;
     __atomic_store_n(&g_dma_done, false, __ATOMIC_RELAXED);
     __atomic_store_n(&g_dma_active, true, __ATOMIC_RELEASE);
@@ -443,6 +489,8 @@ void ChangeAudioRate(uint32_t rate)
     Trace(4);
     if(!SeedConfigureAudioClock(g_seed, rate)) Recover("SEED:CLOCK_RECOVER\r\n");
     g_sample_rate = rate;
+    g_spi_frames = g_low_latency
+        ? SPI_AUDIO_FRAMES : spi_audio_balanced_frames(rate);
     g_capture_write = g_capture_read = 0;
     g_playback_write = g_playback_read = 0;
     g_audio_sample_counter = 0;
@@ -454,17 +502,26 @@ void ChangeAudioRate(uint32_t rate)
 
 void QueuePlayback(const SpiAudioFrame& frame)
 {
-    const uint32_t write
+    uint32_t write
         = __atomic_load_n(&g_playback_write, __ATOMIC_RELAXED);
     const uint32_t read
         = __atomic_load_n(&g_playback_read, __ATOMIC_ACQUIRE);
-    if(write - read >= kRingBlocks)
+    const uint32_t blocks = frame.header.frames / SPI_AUDIO_FRAMES;
+    if(write - read + blocks > kRingBlocks)
         return;
 
-    AudioBlock& destination = g_playback_ring[write % kRingBlocks];
-    destination.sample_counter = frame.header.sample_counter;
-    std::memcpy(destination.samples, frame.samples, sizeof(destination.samples));
-    __atomic_store_n(&g_playback_write, write + 1U, __ATOMIC_RELEASE);
+    for(uint32_t block = 0; block < blocks; ++block)
+    {
+        AudioBlock& destination = g_playback_ring[write % kRingBlocks];
+        destination.sample_counter
+            = frame.header.sample_counter + block * SPI_AUDIO_FRAMES;
+        std::memcpy(destination.samples,
+                    frame.samples
+                        + block * SPI_AUDIO_FRAMES * SPI_AUDIO_CHANNELS,
+                    sizeof(destination.samples));
+        ++write;
+    }
+    __atomic_store_n(&g_playback_write, write, __ATOMIC_RELEASE);
 }
 
 void FinishTransfer()
@@ -507,6 +564,31 @@ void FinishTransfer()
     g_have_rx_sequence = true;
     g_pedalboard_enabled
         = (rx.header.flags & SPI_AUDIO_FLAG_PEDALBOARD_ENABLED) != 0U;
+    const bool requested_control_only
+        = (rx.header.flags & SPI_AUDIO_FLAG_CONTROL_ONLY) != 0U;
+    const bool requested_low_latency
+        = (rx.header.flags & SPI_AUDIO_FLAG_LOW_LATENCY) != 0U;
+    const bool mode_changed = requested_control_only
+        != __atomic_load_n(&g_control_only, __ATOMIC_ACQUIRE)
+        || requested_low_latency != g_low_latency;
+    if(mode_changed)
+    {
+        g_ready.Write(false);
+        const uint32_t primask = __get_PRIMASK();
+        __disable_irq();
+        g_capture_write = g_capture_read = 0;
+        g_playback_write = g_playback_read = 0;
+        __atomic_store_n(&g_control_only, requested_control_only,
+                         __ATOMIC_RELAXED);
+        __set_PRIMASK(primask);
+        g_session_start = true;
+    }
+    g_low_latency = requested_low_latency;
+    g_spi_frames = g_low_latency
+        ? SPI_AUDIO_FRAMES : spi_audio_balanced_frames(rx.header.sample_rate);
+    if(!mode_changed)
+        __atomic_store_n(&g_control_only, requested_control_only,
+                         __ATOMIC_RELEASE);
     if((rx.header.status & SPI_AUDIO_CONTROL_CHANNEL_MASKS_VALID) != 0U)
     {
         __atomic_store_n(
@@ -524,7 +606,8 @@ void FinishTransfer()
         ++g_good_transactions;
         return; // This TX payload belongs to the previous rate/epoch.
     }
-    QueuePlayback(rx);
+    if(!requested_control_only)
+        QueuePlayback(rx);
     ++g_good_transactions;
 }
 } // namespace
@@ -684,11 +767,17 @@ int main(void)
         {
             // P4 only requests this with both USB streams closed. Blocking
             // UART formatting/transmit must not disturb an active audio test.
-            char report[144];
+            char report[192];
+            const bool local = __atomic_load_n(
+                &g_control_only, __ATOMIC_ACQUIRE);
             std::snprintf(report, sizeof(report),
-                "SEED:CPU rate=%lu busy_permille=%lu audio_permille=%lu capture_overruns=%lu spi_errors=%lu\r\n",
-                (unsigned long)g_sample_rate, (unsigned long)g_cpu_permille,
-                (unsigned long)g_audio_permille, (unsigned long)g_capture_overruns,
+                "SEED:CPU rate=%lu mode=%s frames=%u busy_permille=%lu audio_permille=%lu capture_overruns=%lu spi_errors=%lu\r\n",
+                (unsigned long)g_sample_rate,
+                local ? "LOCAL" : (g_low_latency ? "LOW" : "BALANCED"),
+                (unsigned)(local ? SPI_AUDIO_FRAMES : g_spi_frames),
+                (unsigned long)g_cpu_permille,
+                (unsigned long)g_audio_permille,
+                (unsigned long)g_capture_overruns,
                 (unsigned long)g_spi_start_errors);
             SendUart(report);
         }
@@ -729,7 +818,16 @@ int main(void)
         // Cortex-M WFI even with PRIMASK set, then runs immediately on unmask.
         const uint32_t primask = __get_PRIMASK();
         __disable_irq();
-        if(!g_dma_done && (g_dma_active || g_capture_read == g_capture_write)
+        const bool control_only = __atomic_load_n(
+            &g_control_only, __ATOMIC_RELAXED);
+        const uint32_t ready_blocks = control_only
+            ? 0U : g_spi_frames / SPI_AUDIO_FRAMES;
+        const bool audio_ready = !control_only
+            && g_capture_write - g_capture_read >= ready_blocks;
+        const bool control_due = control_only
+            && System::GetNow() - g_last_control_transfer_ms
+                   >= kControlPeriodMs;
+        if(!g_dma_done && (g_dma_active || (!audio_ready && !control_due))
            && !g_uart_command && !g_uart_restart)
         {
             const uint32_t start = TIM2->CNT;
