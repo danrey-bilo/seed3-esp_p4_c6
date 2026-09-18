@@ -1,67 +1,65 @@
-# ESP32-P4 I2S slave -> UAC2 capture test
+# ESP32-P4 · SPI ↔ USB Audio 2
 
-This is a fixed 48 kHz milestone firmware for
-`ESP32-P4-WIFI6-Touch-LCD-7B`. It receives the two Seed3 diagnostic channels
-on GPIO2/3/4 and exposes one stereo UAC2 capture stream through the J1 USB 2.0
-High-Speed controller.
+[← Главная](../README.md) · [Подключение](../docs/wiring.md) · [Прошивка](../FLASHING_RU.md)
 
-The screen, SD, Wi-Fi, BLE, GPIO5 playback path and GPIO30/31 control UART are
-not enabled. USB playback is intentionally deferred until capture has passed a
-30-minute stability test.
+Проект ESP-IDF **5.5.5** для **ESP32-P4-WIFI6-Touch-LCD-7B rev1.x**.
+Рабочий профиль v0.2.1: USB HS UAC2, **2 capture + 2 playback**, только
+**24-битный packed PCM**, 44,1 / 48 / 88,2 / 96 кГц.
 
-## Tool versions
+## Архитектура
 
-- ESP-IDF: 5.5.5 (the component manifest pins this exact release)
-- `espressif/usb_device_uac`: 1.3.1
-- TinyUSB: selected transitively by that component
+[main/main.c](main/main.c) обслуживает проверенный SPI master на 20 МГц,
+READY и управляющий UART. Seed задаёт аудиочасы. Компонент
+[p4_uac2_stream](components/p4_uac2_stream/README_RU.md) переносит PCM
+между кольцами приложения и USB: DMA, prefill, explicit feedback и восстановление
+endpoint. PCM conversion выполняется в задаче, не в USB ISR.
 
-## Build
+![Путь звука Seed3 → P4 → Windows](../docs/assets/audio-overview.svg)
 
-On the prepared workstation run:
+| Интерфейс | Назначение |
+| :--- | :--- |
+| GPIO2 / 3 / 4 / 5 | SCLK / MOSI / MISO / CS |
+| GPIO28 | READY от Seed |
+| GPIO30 / 31 | RX / TX управляющего UART |
+| USB-A J1 | USB HS аудио, только через data-only адаптер с разрывом VBUS |
+| USB TO UART | Прошивка и консоль, сейчас COM6 |
 
-```powershell
-.\build.cmd -Clean
-```
+Полная проводка и обязательные ограничения питания — [здесь](../docs/wiring.md).
+Дисплей, Wi-Fi, SD и отдельная прошивка C6 не входят в этот профиль.
 
-The script activates the installed ESP-IDF 5.5.5 environment, builds the
-project, and creates both separate images and a ready-to-flash merged image in
-`firmware/`. The component manager downloads the pinned UAC component on the
-first build. The project selects its High-Speed root port and a capture-only
-UAC2 descriptor: 2 channels, 48 kHz, packed PCM24.
+## Сборка и прошивка
 
-To flash through the board's programming USB port:
-
-```powershell
-.\flash.cmd COM7
-```
-
-Replace `COM7` with the actual port. See `../FLASHING_RU.md` for the exact
-connector and BOOT/RESET sequence.
-
-## Expected monitor output
-
-At boot, the PCM24 vector test prints `PASS`, followed by one statistics line
-per second. `under` can increase before Windows opens capture or while the Seed
-is not clocking. During the acceptance recording, both `under` and `over` must
-remain unchanged and `align` must remain zero.
-
-The ring holds 512 stereo frames (10.67 ms) and the UAC component requests four
-milliseconds at a time. On overflow the oldest frames are dropped to bound
-latency. On underflow the host receives zeroes; stale samples are never repeated.
-
-## Hardware test
-
-1. Power both boards independently and connect the common ground first.
-2. Flash Seed3 and confirm FS=48 kHz and BCLK=3.072 MHz with a logic analyser.
-3. Connect D26 to GPIO4 and the two clocks through 33 ohm series resistors.
-4. Connect J1 using the specified data-only adapter with VBUS physically open.
-5. Confirm `High-Speed`, 2 channels, 48 kHz and 24 bits in USBTreeView.
-6. Record at least five seconds and run:
+Из этой папки на подготовленном стенде:
 
 ```powershell
-python ..\tools\verify_test_tones.py recording.wav
+.\build.cmd
+.\flash.cmd COM6
 ```
 
-The stock component descriptor is a development descriptor. Before treating
-the hardware as a product, assign a legitimate VID/PID and re-check its power
-attributes against the final J1/VBUS circuit.
+Скрипт сборки активирует установленный ESP-IDF 5.5.5. Используется собственный
+компонент `p4_uac2_stream`; зависимости зафиксированы в
+[dependencies.lock](dependencies.lock). Готовые образы — в [firmware](firmware).
+
+| Образ | Offset |
+| :--- | :--- |
+| `ESP32P4_Seed3_SPI_UAC2_2x2_Merged.bin` | **0x2000**, содержит всё необходимое |
+| `bootloader.bin` | 0x2000 |
+| `partition-table.bin` | 0x8000 |
+| `seed3_p4_spi_uac2.bin` | 0x10000 |
+
+Выберите merged-образ **либо** набор отдельных образов. `flash.cmd` уже
+использует правильный offset и ROM `--no-stub` / 115200 baud.
+Не обходите проверку ревизии через `--force`.
+
+## Настройка и диагностика
+
+На Windows используются `usbaudio2.sys` и WASAPI. Для смены sample rate
+закройте оба потока. USB передаёт 3 байта/отсчёт; внутренний API — `int32_t`
+PCM24 left-aligned. Запас устройства: `buffer 1|2|4` при закрытых потоках.
+
+Ожидаемые признаки работы: `mounted=1`, `hs=1`, совпадение `rate` и `seed`,
+отсутствие прироста CRC/sequence и ошибок USB в непрерывном потоке.
+При старте/закрытии накопительные счётчики могут отличаться от нуля —
+оценивайте их прирост отдельно от установившейся передачи.
+
+[Финальные тесты, ограничения и настройка буферов](../docs/PCM24_ONLY_RU.md).

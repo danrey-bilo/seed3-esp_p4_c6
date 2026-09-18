@@ -1,35 +1,55 @@
-# Daisy Seed3 SAI2 test firmware
+# Seed3 · аудио и SPI
 
-This firmware keeps the Seed3 codec path alive while making Seed3 the audio
-clock master for the ESP32-P4 link.
+[← Главная](../README.md) · [Схема подключения](../docs/wiring.md) · [Прошивка](../FLASHING_RU.md)
 
-- SAI1: built-in TAC5242 codec, stereo 48 kHz / 24 bit;
-- SAI2 B: master receive on D25 (reserved for the later playback milestone);
-- SAI2 A: synchronous slave transmit on D26;
-- SAI2 clocks: FS on D27 and BCLK on D28;
-- transmitted diagnostic signal: 997 Hz left and 1501 Hz right at -12 dBFS;
-- local analog input is copied to local analog output and does not depend on
-  the P4.
+Рабочая прошивка **v0.2.1** для Daisy Seed3: АЦП/ЦАП stereo PCM24,
+44,1 / 48 / 88,2 / 96 кГц. Seed является источником аудиочасов,
+а P4 — мастером SPI на 20 МГц.
 
-The LED blinks at 1 Hz while callbacks are running. It stays on if the board is
-not detected as Seed3 or an SAI/audio initialization call fails.
+## Поток аудио
 
-Build with the installed Daisy Toolchain:
+- Capture: реальные входы АЦП L/R → PCM24 left-aligned → SPI → P4 → ПК.
+- Playback: ПК → P4 → SPI → аналоговые выходы Seed.
+- Местный аналоговый вход смешивается с USB playback с коэффициентом 0,5.
+- Обмен — по 32 стереокадра, с READY, CRC и номером последовательности.
+- Частота приходит от P4 по SPI; после перестройки часов Seed подтверждает её.
+
+В USB на стороне P4 используется **3-байтовый PCM24**. Внутри SPI остаётся
+32-битный контейнер с нулевым младшим байтом. Тестовые синусы отключены:
+`kUseTestTones = false` в [src/main.cpp](src/main.cpp).
+
+## Подключение
+
+| Назначение | Seed3 | P4 |
+| :--- | :--- | :--- |
+| SCLK / MOSI / MISO / CS | D8 / D10 / D9 / D7 | GPIO2 / GPIO3 / GPIO4 / GPIO5 |
+| READY | D0 | GPIO28 |
+| TX → RX | D13 | GPIO30 |
+| RX ← TX | D14 | GPIO31 |
+| Земля | DGND | GND |
+
+![Проводка плат](../docs/assets/spi-wiring.svg)
+
+## Сборка и прошивка
+
+Из этой папки, с установленной DaisyToolchain и libDaisy:
 
 ```powershell
-.\build.cmd -Clean
-```
-
-The build script uses `Seed3/libDaisy` when present. On this workstation it can
-also reuse the pinned libDaisy checkout in
-`F:/Repos/seed3 audio usb/Seed3MonoUsbInput/libDaisy`.
-
-The build also copies the release image and its SHA-256 to `firmware/`.
-Flash it with the included script after putting Seed3 into DFU mode:
-
-```powershell
+.\build.cmd
+# Seed уже переведён в ROM DFU
 .\flash.cmd
 ```
 
-See `../FLASHING_RU.md` for the button sequence and complete wiring/verification
-procedure.
+Образ [Seed3P4SpiAudio.bin](firmware/Seed3P4SpiAudio.bin) записывается
+по адресу `0x08000000`. SHA256 находится в [firmware/SHA256SUMS.txt](firmware/SHA256SUMS.txt).
+Скрипт использует `Seed3/libDaisy` или локальный путь, указанный в
+[инструкции](../FLASHING_RU.md); внешняя библиотека при сборке не меняется.
+
+При работающем приложении и подключённом UART команда `seed boot` через
+консоль P4 переводит Seed в ROM DFU без кнопок. USB Seed должен быть подключён
+к ПК. `flash.cmd` запускает образ после записи автоматически.
+
+Тайм-аут SPI/IWDG и новая сессия восстанавливают связь после перезапуска P4.
+Если приложение или UART недоступны, используйте BOOT+RESET.
+
+Это **SPI-прошивка**; прежние соединения SAI2 на D25–D28 не используются.

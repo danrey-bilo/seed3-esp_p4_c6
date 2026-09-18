@@ -1,50 +1,93 @@
-# Current SPI wiring (2026-09-18)
+# Подключение Seed3 и ESP32-P4
 
-Confirmed against both current source files. P4 is the SPI master, while
-Seed3's audio callback and READY pacing determine the audio sample rate.
+[← Главная](../README.md) · [Прошивка плат](../FLASHING_RU.md)
 
-| Signal | Seed3 | ESP32-P4 GPIO | Direction |
-|---|---|---|---|
-| SPI SCLK | D8 | 2 | P4 → Seed3 |
-| SPI MOSI / playback | D10 | 3 | P4 → Seed3 |
-| SPI MISO / capture | D9 | 4 | Seed3 → P4 |
-| SPI CS | D7 | 5 | P4 → Seed3 |
-| READY | D0 | 28 | Seed3 → P4 |
-| UART TX | D13 | 30 / RX | Seed3 → P4 |
-| UART RX | D14 | 31 / TX | P4 → Seed3 |
-| GND | DGND | GND | common |
+Актуально для **v0.2.1, PCM24 2×2, 44,1–96 кГц**. Между платами используются
+**SPI + READY + UART**. Назначения сверены с исходниками обеих прошивок.
 
-SPI mode 0, 20 MHz, 32 stereo frames per transaction: 1378.125 / 1500 /
-2756.25 / 3000 transactions/s at 44.1 / 48 / 88.2 / 96 kHz. Use short wiring;
-the new UAC2 component does not require reconnecting the boards.
+> [!WARNING]
+> Выполняйте монтаж при отключённом питании. Соедините DGND Seed и GND P4,
+> но не соединяйте их линии 3V3. USB-A J1 нельзя подключать обычным A↔A кабелем:
+> необходим проверенный data-only адаптер с физическим разрывом VBUS.
 
-Do not connect the boards' 3.3 V rails together. USB-A J1 uses the existing
-data-only D+/D−/GND adapter with VBUS isolated between independently powered
-PC and board. Do not connect an ordinary USB-A ↔ USB-A cable.
+## 1. Сигналы между платами
 
-## Historical I2S wiring — not used by the current SPI firmware
+![Проводка SPI, READY, UART и GND](assets/spi-wiring.svg)
 
-| Signal | Daisy Seed3 | ESP32-P4 P3 | Direction |
-|---|---|---|---|
-| BCLK | D28 / physical pin 35 | GPIO2 / P3-10 | Seed3 -> P4 |
-| FS / LRCLK | D27 / physical pin 34 | GPIO3 / P3-9 | Seed3 -> P4 |
-| Record data | D26 / physical pin 33 | GPIO4 / P3-8 | Seed3 -> P4 |
-| Playback data | D25 / physical pin 32 | GPIO5 / P3-7 | P4 -> Seed3 (reserved; unused in this profile) |
-| UART TX | D13 / physical pin 14 | GPIO30 / P3-4 | reserved |
-| UART RX | D14 / physical pin 15 | GPIO31 / P3-3 | reserved |
-| Ground | DGND / physical pin 40 | GND / P3-11 | common |
+На рисунке показаны **соединения сигналов**, не вид разъёмов сверху.
+`D8` — имя вывода Seed, а не восьмой физический контакт. `GPIO2` — номер GPIO
+P4, а не второй контакт разъёма. Сверяйте маркировку и ревизию своей платы.
 
-Use 33 ohm series resistors in BCLK, FS and both data lines. Do not connect the
-3.3 V rails of the two boards. Do not use GPIO46--GPIO48 on P1.
+| Сигнал | Seed3 | P4 | Источник → приёмник |
+| :--- | :--- | :--- | :--- |
+| SPI SCLK | D8 | GPIO2 | P4 → Seed |
+| SPI MOSI / playback | D10 | GPIO3 | P4 → Seed |
+| SPI MISO / capture | D9 | GPIO4 | Seed → P4 |
+| SPI CS | D7 | GPIO5 | P4 → Seed |
+| READY | D0 | GPIO28 | Seed → P4 |
+| UART TX Seed | D13 | GPIO30 / RX | Seed → P4 |
+| UART RX Seed | D14 | GPIO31 / TX | P4 → Seed |
+| Общая земля | DGND | GND | Общее соединение |
 
-The PC connection is J1 USB-A High Speed. Do not use an ordinary USB-A to
-USB-A cable. The bench adapter must carry D+, D- and ground only; VBUS between
-the independently powered PC and board must be physically open.
+P4 — **SPI master**, Seed — **SPI slave**. При этом аудиочасы принадлежат Seed:
+его callback и сигнал READY определяют темп обмена. UART служит для диагностики,
+`seed reset` и `seed boot`, а не для передачи PCM.
 
-## Expected signals
+Используйте короткие проводники и надёжную общую землю. На 20 МГц длинные
+макетные провода требуют отдельной проверки целостности сигналов.
 
-- FS: 48,000 Hz
-- BCLK: 3.072 MHz (64 BCLK per stereo frame)
-- slot format: stereo, MSB-justified, 24 valid bits in each 32-bit slot
-- left tone: 997 Hz, approximately -12 dBFS peak
-- right tone: 1501 Hz, approximately -12 dBFS peak
+| Частота звука | Кадров в SPI-пакете | Транзакций/с |
+| :--- | ---: | ---: |
+| 44,1 кГц | 32 | 1 378,125 |
+| 48 кГц | 32 | 1 500 |
+| 88,2 кГц | 32 | 2 756,25 |
+| 96 кГц | 32 | 3 000 |
+
+SPI mode 0, SCLK 20 МГц. Layout пакета и контроль CRC описаны в
+[spi_audio_protocol.h](../protocol/spi_audio_protocol.h).
+
+## 2. USB и питание
+
+![USB-аудио отдельно от сервисных портов, VBUS аудиолинии разорван](assets/usb-connections.svg)
+
+| Подключение | Назначение | Важно |
+| :--- | :--- | :--- |
+| ПК ↔ P4 **USB-A J1** | USB HS UAC2, capture + playback | D+, D−, GND; VBUS между ПК и P4 разорван |
+| ПК ↔ P4 **USB TO UART** | Прошивка P4, консоль, диагностика | Сейчас COM6; фактический порт проверьте в Windows |
+| ПК ↔ **USB Seed3** | ROM DFU 0483:df11 | Нужен для записи Seed; приложение не использует его как аудиокарту |
+
+P4 должен получать питание через свой штатный вход согласно документации
+платы; аудиокабель с разрывом VBUS не является источником питания P4.
+Не объединяйте через него питающие выходы ПК и платы. До подключения
+проверьте отсутствие сквозного соединения VBUS у адаптера и отсутствие замыканий.
+
+На P4 есть отдельные Type-C **USB TO UART** и **USB1.1 FS**. Для этого проекта
+используйте USB TO UART для прошивки, а Type-A J1 — для HS-аудио.
+Назначение физических USB-разъёмов подтверждено
+[документацией Waveshare](https://docs.waveshare.com/ESP32-P4-WIFI6-Touch-LCD-7B#hardware-description).
+Схема data-only соединения выше относится к данному стенду, а не к обычному
+комплектному USB-кабелю производителя.
+
+## 3. Проверка перед первым запуском
+
+- [ ] Платы отключены на время монтажа; DGND/GND соединены.
+- [ ] Линии 3V3 двух плат не объединены.
+- [ ] Все восемь соединений соответствуют таблице; TX идёт на RX.
+- [ ] Разрыв VBUS у адаптера проверен; обычный A↔A кабель не используется.
+- [ ] Прошиты обе платы; образ P4 предназначен для rev1.x.
+- [ ] Windows видит запись и воспроизведение `usb uac` без Code 10.
+- [ ] При тесте выбран один общий sample rate; `mounted=1`, `hs=1`.
+- [ ] Во время непрерывного прогона не растут CRC/sequence и USB error counters.
+
+На готовой прошивке capture — **АЦП L/R**. Синусы 997/1501 Гц включаются
+только диагностической настройкой `kUseTestTones = true` с пересборкой Seed.
+
+## Сверка с кодом
+
+- [P4: GPIO, SPI master и UART](../ESP32-P4-WIFI6-Touch-LCD-7B/main/main.c).
+- [Seed: SPI slave, READY и UART](../Seed3/src/main.cpp).
+- [Форматы USB, результаты и ограничения](PCM24_ONLY_RU.md).
+
+> [!NOTE]
+> Ранняя проводка I²S/SAI2 с D25–D28 относится к старым экспериментам.
+> Для текущих SPI-образов она не подходит. Не смешивайте две схемы.

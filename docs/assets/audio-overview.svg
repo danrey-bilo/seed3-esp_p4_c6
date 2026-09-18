@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="424" viewBox="0 0 1200 424" role="img" aria-labelledby="title desc">
+<title id="title">Seed3 + ESP32-P4 — USB Audio 2×2</title>
+<desc id="desc">Seed3 содержит АЦП и ЦАП и задаёт аудиочасы. ESP32-P4 передаёт PCM через SPI и USB High Speed. Запись идёт к Windows, воспроизведение — к Seed3. 24 бита, 44,1–96 кГц.</desc>
+<defs>
+  <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="#24334b"/></pattern>
+  <marker id="green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#54d6ae"/></marker>
+  <marker id="blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#79aaff"/></marker>
+</defs>
+<rect width="1200" height="424" rx="22" fill="#0d1526"/>
+<rect width="1200" height="424" rx="22" fill="url(#grid)" opacity=".7"/>
+<g font-family="Segoe UI, Arial, sans-serif">
+  <rect x="52" y="44" width="6" height="24" rx="3" fill="#54d6ae"/>
+  <text x="73" y="63" fill="#a7bbcF" font-size="16" font-weight="600" letter-spacing="2">USB AUDIO CLASS 2.0</text>
+  <rect x="1010" y="42" width="138" height="34" rx="17" fill="#18283a" stroke="#31465a"/>
+  <text x="1079" y="65" text-anchor="middle" fill="#54d6ae" font-size="17" font-weight="600">v0.2.1</text>
+  <text x="52" y="132" fill="#f6f8fc" font-size="56" font-weight="700" letter-spacing="-1">SEED3 / P4 AUDIO</text>
+  <text x="55" y="178" fill="#bdcada" font-size="24">2 входа + 2 выхода · 24 бита · 44,1 / 48 / 88,2 / 96 кГц</text>
+  <rect x="52" y="226" width="290" height="116" rx="14" fill="#122b2c" stroke="#317869"/>
+  <rect x="456" y="226" width="288" height="116" rx="14" fill="#172740" stroke="#3d6296"/>
+  <rect x="858" y="226" width="290" height="116" rx="14" fill="#20263a" stroke="#5a6486"/>
+  <text x="78" y="272" fill="#f4faf9" font-size="25" font-weight="700">DAISY SEED3</text>
+  <text x="78" y="309" fill="#a6c7c3" font-size="19">АЦП / ЦАП · аудиочасы</text>
+  <text x="482" y="272" fill="#f4f7fd" font-size="25" font-weight="700">ESP32-P4</text>
+  <text x="482" y="309" fill="#b4c5df" font-size="18">FIFO / DMA · SPI master</text>
+  <text x="884" y="272" fill="#f4f7fd" font-size="25" font-weight="700">WINDOWS</text>
+  <text x="884" y="309" fill="#bec7df" font-size="18">usbaudio2.sys · WASAPI</text>
+  <text x="399" y="249" fill="#b4c5df" font-size="14" text-anchor="middle">SPI 20 МГц</text>
+  <text x="801" y="249" fill="#b4c5df" font-size="14" text-anchor="middle">USB HS</text>
+  <path d="M354 277H444 M756 277H846" fill="none" stroke="#54d6ae" stroke-width="3" marker-end="url(#green)"/>
+  <path d="M444 310H354 M846 310H756" fill="none" stroke="#79aaff" stroke-width="3" marker-end="url(#blue)"/>
+  <path d="M354 277H444" stroke="#54d6ae" stroke-width="3" marker-end="url(#green)"/>
+  <path d="M444 310H354" stroke="#79aaff" stroke-width="3" marker-end="url(#blue)"/>
+  <circle cx="61" cy="385" r="5" fill="#54d6ae"/>
+  <text x="76" y="392" fill="#b9c8d9" font-size="18">Запись: Seed → ПК</text>
+  <circle cx="350" cy="385" r="5" fill="#79aaff"/>
+  <text x="365" y="392" fill="#b9c8d9" font-size="18">Воспроизведение: ПК → Seed</text>
+  <text x="1148" y="392" fill="#90a3bc" font-size="17" text-anchor="end">PCM24 packed · 3 байта / отсчёт</text>
+</g>
+</svg>

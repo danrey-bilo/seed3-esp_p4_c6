@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="646" viewBox="0 0 1200 646" role="img" aria-labelledby="title desc">
+<title id="title">USB-подключения и безопасное разделение питания</title>
+<desc id="desc">Аудио идёт между ПК и USB-A J1 P4 через адаптер, соединяющий только D+, D− и GND; VBUS разорван. Другой кабель к USB TO UART служит для прошивки P4. USB Seed3 служит для ROM DFU. Обычный кабель USB-A — USB-A запрещён.</desc>
+<rect width="1200" height="646" rx="20" fill="#f6f8fc"/>
+<g font-family="Segoe UI, Arial, sans-serif">
+  <text x="52" y="64" font-size="34" font-weight="700" fill="#142337">Три USB-соединения — три назначения</text>
+  <text x="52" y="103" font-size="20" fill="#52647b">Аудиопорт и порты прошивки не взаимозаменяемы</text>
+  <rect x="52" y="145" width="254" height="397" rx="16" fill="#eef0f7" stroke="#c8cede" stroke-width="2"/>
+  <text x="80" y="188" font-size="28" font-weight="700" fill="#26324c">ПК / Windows</text>
+  <text x="80" y="242" font-size="22" fill="#126d58">Аудио 2×2</text>
+  <text x="80" y="355" font-size="22" fill="#315887">Сервис P4</text>
+  <text x="80" y="501" font-size="22" fill="#4d5f77">Сервис Seed</text>
+  <rect x="860" y="145" width="288" height="253" rx="16" fill="#ecf2fc" stroke="#b4c9e8" stroke-width="2"/>
+  <text x="884" y="188" font-size="28" font-weight="700" fill="#234e88">ESP32-P4</text>
+  <text x="884" y="242" font-size="23" font-weight="600" fill="#234e88">USB-A J1</text>
+  <text x="884" y="272" font-size="17" fill="#506782">High Speed · USB Audio 2</text>
+  <text x="884" y="354" font-size="22" font-weight="600" fill="#234e88">USB TO UART</text>
+  <text x="884" y="380" font-size="17" fill="#506782">Прошивка + консоль</text>
+  <rect x="860" y="440" width="288" height="102" rx="16" fill="#e9f7f1" stroke="#b0d9ca" stroke-width="2"/>
+  <text x="884" y="482" font-size="26" font-weight="700" fill="#115947">USB Seed3</text>
+  <text x="884" y="513" font-size="18" fill="#43695d">ROM DFU · прошивка</text>
+  <path d="M306 236H474 M714 236H860" fill="none" stroke="#07866b" stroke-width="4"/>
+  <circle cx="306" cy="236" r="5" fill="#07866b"/><circle cx="860" cy="236" r="5" fill="#07866b"/>
+  <rect x="474" y="180" width="240" height="132" rx="12" fill="#fff5e4" stroke="#d8a74e" stroke-width="2"/>
+  <text x="594" y="210" text-anchor="middle" font-size="19" font-weight="700" fill="#785015">DATA-ONLY АДАПТЕР</text>
+  <text x="594" y="242" text-anchor="middle" font-size="22" font-weight="600" fill="#126d58">D+ / D− / GND</text>
+  <path d="M496 282H555 M633 282H692" stroke="#b24839" stroke-width="3"/>
+  <path d="M582 271L602 292 M602 271L582 292" stroke="#b24839" stroke-width="3"/>
+  <text x="594" y="334" text-anchor="middle" font-size="18" font-weight="600" fill="#a63e31">VBUS разорван</text>
+  <path d="M306 350H860" stroke="#3769a3" stroke-width="3"/>
+  <circle cx="306" cy="350" r="5" fill="#3769a3"/><circle cx="860" cy="350" r="5" fill="#3769a3"/>
+  <text x="582" y="383" text-anchor="middle" font-size="19" fill="#42617e">COM-порт · диагностика и обновление P4</text>
+  <path d="M306 493H860" stroke="#526781" stroke-width="3" stroke-dasharray="9 6"/>
+  <circle cx="306" cy="493" r="5" fill="#526781"/><circle cx="860" cy="493" r="5" fill="#526781"/>
+  <text x="582" y="475" text-anchor="middle" font-size="19" fill="#526781">Нужен для загрузки прошивки Seed</text>
+  <rect x="52" y="570" width="1096" height="54" rx="10" fill="#fff4de" stroke="#e7c778"/>
+  <text x="76" y="605" font-size="21" font-weight="600" fill="#7c5010">Не использовать обычный USB-A ↔ USB-A. P4 питается через свой штатный вход.</text>
+</g>
+</svg>
