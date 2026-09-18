@@ -14,6 +14,9 @@ enum { P4_UAC2_RATE = 48000, P4_UAC2_CHANNELS = 2,
 typedef struct {
     uint32_t initialization_state; // 0 off, 1 starting, 2 running, 3 failed
     uint32_t sample_rate, source_sample_rate, rate_changes, source_restarts;
+    // Last rate actually selected when each Windows endpoint was opened.
+    // The physical Seed clock remains common to both directions.
+    uint32_t capture_sample_rate, playback_sample_rate;
     uint32_t capture_bits, playback_bits, prefill_frames, buffer_ms;
     uint32_t capture_source_frames, capture_completed_frames;
     uint32_t capture_packets, capture_short_packets, capture_long_packets;

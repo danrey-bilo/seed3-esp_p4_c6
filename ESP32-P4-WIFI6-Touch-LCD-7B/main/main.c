@@ -15,6 +15,7 @@
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "audio_dashboard.h"
 #include "spi_audio_protocol.h"
 #include "p4_uac2_stream.h"
 
@@ -82,6 +83,14 @@ static int32_t decode_pcm24_left_aligned(const uint8_t sample[4])
     return (int32_t)(value & 0xffffff00U);
 }
 
+static uint32_t sample_magnitude(int32_t sample)
+{
+    if (sample == INT32_MIN) {
+        return INT32_MAX;
+    }
+    return (uint32_t)(sample < 0 ? -sample : sample);
+}
+
 static void fill_tx_header(uint8_t flags, uint16_t status)
 {
     s_spi_tx.header.magic = SPI_AUDIO_MAGIC;
@@ -119,11 +128,21 @@ static void validate_rx_frame(void)
     }
 
     bool format_error = false;
+    uint32_t capture_peak[SPI_AUDIO_CHANNELS] = {0U};
+    uint32_t playback_peak[SPI_AUDIO_CHANNELS] = {0U};
     for (size_t sample = 0;
          sample < SPI_AUDIO_FRAMES * SPI_AUDIO_CHANNELS; ++sample) {
         if (((uint32_t)s_spi_rx.samples[sample] & 0xFFU) != 0U) {
             format_error = true;
-            break;
+        }
+        const size_t channel = sample % SPI_AUDIO_CHANNELS;
+        const uint32_t capture = sample_magnitude(s_spi_rx.samples[sample]);
+        const uint32_t playback = sample_magnitude(s_spi_tx.samples[sample]);
+        if (capture > capture_peak[channel]) {
+            capture_peak[channel] = capture;
+        }
+        if (playback > playback_peak[channel]) {
+            playback_peak[channel] = playback;
         }
     }
 
@@ -146,26 +165,18 @@ static void validate_rx_frame(void)
     s_expected_rx_sequence = s_spi_rx.header.sequence + 1U;
     s_have_rx_sequence = true;
 
+    audio_dashboard_set_seed_cpu(
+        spi_audio_status_cpu_percent(s_spi_rx.header.status));
+    audio_dashboard_submit_peaks(
+        capture_peak[0], capture_peak[1], playback_peak[0], playback_peak[1]);
+
     if (!logged_first_valid_frame) {
-        int32_t peak[SPI_AUDIO_CHANNELS] = {0};
-        for (size_t frame = 0; frame < SPI_AUDIO_FRAMES; ++frame) {
-            for (size_t channel = 0; channel < SPI_AUDIO_CHANNELS;
-                 ++channel) {
-                const int32_t value =
-                    s_spi_rx.samples[frame * SPI_AUDIO_CHANNELS + channel];
-                const int32_t magnitude =
-                    value < 0 ? (int32_t)(-(int64_t)value) : value;
-                if (magnitude > peak[channel]) {
-                    peak[channel] = magnitude;
-                }
-            }
-        }
         ESP_LOGI(TAG,
                  "first valid Seed frame: seq=%" PRIu32 " flags=%u tx_seq=%" PRIu32
                  " sample0=%" PRId32 "/%" PRId32
-                 " peak=%" PRId32 "/%" PRId32,
+                 " peak=%" PRIu32 "/%" PRIu32,
                  s_spi_rx.header.sequence, s_spi_rx.header.flags, s_spi_tx.header.sequence, s_spi_rx.samples[0],
-                 s_spi_rx.samples[1], peak[0], peak[1]);
+                 s_spi_rx.samples[1], capture_peak[0], capture_peak[1]);
         logged_first_valid_frame = true;
     }
     p4_uac2_source_rate(s_spi_rx.header.sample_rate,
@@ -430,14 +441,27 @@ static void log_stats(void)
     portEXIT_CRITICAL(&s_stats_mux);
     p4_uac2_stats_t u;
     p4_uac2_get_stats(&u);
+    const audio_dashboard_status_t dashboard = {
+        .capture_sample_rate = u.capture_sample_rate,
+        .playback_sample_rate = u.playback_sample_rate,
+        .buffer_ms = u.buffer_ms,
+        .spi_errors = snapshot.spi_errors,
+        .crc_errors = snapshot.crc_errors,
+        .usb_mounted = u.mounted,
+        .capture_active = u.capture_active,
+        .playback_active = u.playback_active,
+    };
+    audio_dashboard_publish_status(&dashboard);
     ESP_LOGI(TAG, "spi=%" PRIu64 " err=%" PRIu64
              " frame_err[h/c/s/f]=%" PRIu64 "/%" PRIu64 "/%" PRIu64 "/%" PRIu64
              " seed_status=0x%04x sessions=%" PRIu32 " echoed=%" PRIu32,
              snapshot.spi_transactions, snapshot.spi_errors, snapshot.header_errors,
              snapshot.crc_errors, snapshot.sequence_errors, snapshot.format_errors, snapshot.seed_status, snapshot.seed_sessions, snapshot.echoed_frames);
-    ESP_LOGI(TAG, "format rate=%" PRIu32 " seed=%" PRIu32 " bits=%" PRIu32 "/%" PRIu32
+    ESP_LOGI(TAG, "format rate=%" PRIu32 " usb=%" PRIu32 "/%" PRIu32
+             " seed=%" PRIu32 " bits=%" PRIu32 "/%" PRIu32
              " prefill=%" PRIu32 " budget=%" PRIu32 "ms changes=%" PRIu32 " epochs=%" PRIu32,
-             u.sample_rate, u.source_sample_rate, u.capture_bits, u.playback_bits,
+             u.sample_rate, u.capture_sample_rate, u.playback_sample_rate,
+             u.source_sample_rate, u.capture_bits, u.playback_bits,
              u.prefill_frames, u.buffer_ms, u.rate_changes, u.source_restarts);
     if (snapshot.header_errors) {
         const SpiAudioHeader *h = &snapshot.last_bad_header;
@@ -555,6 +579,7 @@ void app_main(void)
     ESP_ERROR_CHECK(__atomic_load_n(&s_spi_init_result, __ATOMIC_RELAXED));
 
     ESP_ERROR_CHECK(p4_uac2_init());
+    ESP_ERROR_CHECK(audio_dashboard_init());
     ESP_ERROR_CHECK(xTaskCreatePinnedToCore(console_task, "audio_console", 3072, NULL, 3, NULL, 0) == pdPASS ? ESP_OK : ESP_ERR_NO_MEM);
 
     ESP_LOGI(TAG,

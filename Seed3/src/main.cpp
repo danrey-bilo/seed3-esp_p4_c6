@@ -320,7 +320,10 @@ void FillHeader(SpiAudioFrame& frame,
     frame.header.valid_bits = SPI_AUDIO_VALID_BITS;
     frame.header.sample_counter = sample_counter;
     frame.header.payload_bytes = SPI_AUDIO_PAYLOAD_BYTES;
-    frame.header.status = status;
+    // Publish the already measured foreground/IRQ load in-band. This does not
+    // add UART traffic or work to the audio callback and preserves the fixed
+    // 288-byte SPI frame.
+    frame.header.status = spi_audio_status_with_cpu(status, g_cpu_permille);
     frame.header.crc32 = 0U;
 }
 

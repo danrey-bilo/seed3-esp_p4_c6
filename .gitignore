@@ -361,6 +361,8 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# EEZ Studio stores editor layout separately from the portable project.
+*.eez-project-ui-state
 # Hardware-test recordings are reproducible; keep reports, not raw audio.
 *.wav
 /tools/test-output/**/*.zip

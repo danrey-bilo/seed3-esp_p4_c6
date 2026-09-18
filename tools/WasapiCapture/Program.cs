@@ -240,6 +240,8 @@ internal static partial class Program
     {
         try {
             args = ParseOptions(args);
+            if (args.Length > 0 && args[0] == "--render-only")
+                return RunRenderOnly(args.Skip(1).ToArray());
             return args.Length > 0 && (args[0] == "--probe" || args[0] == "--probe-24-only")
                 ? Probe(args.Skip(1).ToArray(), args[0] == "--probe-24-only") : Run(args);
         }

@@ -35,6 +35,11 @@ enum {
     SPI_AUDIO_STATUS_RX_HEADER_ERROR = 1U << 2,
     SPI_AUDIO_STATUS_RX_CRC_ERROR = 1U << 3,
     SPI_AUDIO_STATUS_RX_SEQUENCE_ERROR = 1U << 4,
+    /* Bits 8..14 carry a 0..100 percent Seed3 CPU load sample. The wire
+     * layout and protocol version stay unchanged; low bits remain sticky
+     * transport errors. */
+    SPI_AUDIO_STATUS_CPU_SHIFT = 8U,
+    SPI_AUDIO_STATUS_CPU_MASK = 0x7f00U,
 };
 
 typedef struct __attribute__((packed)) {
@@ -134,6 +139,25 @@ static inline uint32_t spi_audio_frame_crc32(const SpiAudioFrame *frame)
 static inline bool spi_audio_rate_is_supported(uint32_t rate)
 {
     return rate == 44100U || rate == 48000U || rate == 88200U || rate == 96000U;
+}
+
+static inline uint16_t spi_audio_status_with_cpu(uint16_t status,
+                                                  uint32_t cpu_permille)
+{
+    uint32_t percent = (cpu_permille + 5U) / 10U;
+    if (percent > 100U) {
+        percent = 100U;
+    }
+    return (uint16_t)((status & ~SPI_AUDIO_STATUS_CPU_MASK) |
+                      (percent << SPI_AUDIO_STATUS_CPU_SHIFT));
+}
+
+static inline uint8_t spi_audio_status_cpu_percent(uint16_t status)
+{
+    uint16_t percent =
+        (uint16_t)((status & SPI_AUDIO_STATUS_CPU_MASK) >>
+                   SPI_AUDIO_STATUS_CPU_SHIFT);
+    return (uint8_t)(percent <= 100U ? percent : 100U);
 }
 
 static inline bool spi_audio_header_is_valid(const SpiAudioHeader *header)

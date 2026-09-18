@@ -39,6 +39,7 @@ static endpoint_t eps[3];
 static p4_uac2_stats_t stats;
 static uint32_t cap_active, play_active, play_epoch, initialised;
 static uint32_t requested_rate = 48000, runtime_rate = 48000, confirmed_rate;
+static uint32_t capture_selected_rate = 48000, playback_selected_rate = 48000;
 static uint32_t source_epoch, applied_source_epoch;
 static uint32_t buffer_ms = 1, prefill_frames = 64, applied_buffer_ms = 1;
 static uint32_t cap_frame_bytes = UAC_FRAME_BYTES, play_frame_bytes = UAC_FRAME_BYTES, packet_phase;
@@ -237,7 +238,10 @@ static bool stream_set(unsigned itf, uint8_t alt) {
     alternates[itf] = alt;
     if (itf == UAC_CAP_ITF) {
         STORE(cap_active, 0);
-        if (alt) STORE(cap_frame_bytes, UAC_FRAME_BYTES);
+        if (alt) {
+            STORE(cap_frame_bytes, UAC_FRAME_BYTES);
+            STORE(capture_selected_rate, LOAD(requested_rate));
+        }
         if (!endpoint_restart(CAP, enable)) { usbd_spin_unlock(false); return false; }
         queued_frames = 0;
         capture_started = false;
@@ -248,7 +252,10 @@ static bool stream_set(unsigned itf, uint8_t alt) {
         STORE(cap_active, enable);
     } else {
         STORE(play_active, 0);
-        if (alt) STORE(play_frame_bytes, UAC_FRAME_BYTES);
+        if (alt) {
+            STORE(play_frame_bytes, UAC_FRAME_BYTES);
+            STORE(playback_selected_rate, LOAD(requested_rate));
+        }
         if (!endpoint_restart(PLAY, enable) || !endpoint_restart(FB, enable)) {
             usbd_spin_unlock(false); return false;
         }
@@ -313,6 +320,14 @@ static bool control_impl(uint8_t port, uint8_t stage, const tusb_control_request
             if (rate != LOAD(requested_rate)) {
                 STORE(requested_rate, rate);
                 ADD(stats.rate_changes, 1);
+            }
+            // A shared UAC2 clock control has no direction identifier. While
+            // one endpoint is live its owner is unambiguous; otherwise the
+            // value is latched by that endpoint's following SET_INTERFACE.
+            if (LOAD(cap_active) && !LOAD(play_active)) {
+                STORE(capture_selected_rate, rate);
+            } else if (LOAD(play_active) && !LOAD(cap_active)) {
+                STORE(playback_selected_rate, rate);
             }
         }
         if (stage == CONTROL_STAGE_DATA && !input && entity == 2 &&
@@ -710,6 +725,8 @@ void p4_uac2_get_stats(p4_uac2_stats_t *out) {
     out->initialization_state = LOAD(initialised);
     out->sample_rate = LOAD(runtime_rate);
     out->source_sample_rate = LOAD(confirmed_rate);
+    out->capture_sample_rate = LOAD(capture_selected_rate);
+    out->playback_sample_rate = LOAD(playback_selected_rate);
     out->capture_bits = UAC_VALID_BITS;
     out->playback_bits = UAC_VALID_BITS;
     out->prefill_frames = LOAD(prefill_frames);

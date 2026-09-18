@@ -9,6 +9,21 @@ internal interface IAudioRenderClient
 
 internal static partial class Program
 {
+    private static int RunRenderOnly(string[] args)
+    {
+        if (args.Length is < 1 or > 3)
+            throw new ArgumentException("--render-only RENDER_GUID [SECONDS] [exclusive]");
+        double seconds = args.Length > 1
+            ? double.Parse(args[1], System.Globalization.CultureInfo.InvariantCulture)
+            : 5.0;
+        if (seconds <= 0) throw new ArgumentOutOfRangeException(nameof(seconds));
+        bool exclusive = args.Length > 2 && args[2] == "exclusive";
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(seconds));
+        using var started = new ManualResetEventSlim();
+        Render(args[0], stop.Token, started, exclusive);
+        return 0;
+    }
+
     // Independent shared RAW playback stream. Does not change Windows defaults or volume.
     private static void Render(string endpoint, CancellationToken stop, ManualResetEventSlim started, bool exclusive = false)
     {

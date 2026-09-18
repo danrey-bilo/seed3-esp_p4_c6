@@ -1,0 +1,129 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="600" viewBox="0 0 1024 600">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#07111f"/>
+      <stop offset="1" stop-color="#091523"/>
+    </linearGradient>
+    <linearGradient id="inLevel" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#21b991"/>
+      <stop offset="0.72" stop-color="#42e8bd"/>
+      <stop offset="1" stop-color="#d9ff7a"/>
+    </linearGradient>
+    <linearGradient id="outLevel" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#496bd7"/>
+      <stop offset="0.72" stop-color="#6f8cff"/>
+      <stop offset="1" stop-color="#b2c3ff"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000" flood-opacity="0.34"/>
+    </filter>
+    <filter id="glowIn" x="-80%" y="-20%" width="260%" height="140%">
+      <feGaussianBlur stdDeviation="5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glowOut" x="-80%" y="-20%" width="260%" height="140%">
+      <feGaussianBlur stdDeviation="5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <style>
+      text{font-family:Montserrat,Segoe UI,sans-serif}
+      .card{fill:#0d1928;stroke:#1a2c42;stroke-width:1}
+      .chip{fill:#101f31;stroke:#20364d;stroke-width:1}
+      .title{fill:#f4f8ff;font-size:28px;font-weight:700;letter-spacing:1px}
+      .sub{fill:#7589a3;font-size:12px;font-weight:600;letter-spacing:2px}
+      .label{fill:#92a4b8;font-size:14px}
+      .tiny{fill:#647a92;font-size:12px;letter-spacing:1px}
+      .channel{fill:#eef4fb;font-size:20px;font-weight:700}
+      .center{text-anchor:middle}
+    </style>
+  </defs>
+
+  <rect width="1024" height="600" fill="url(#bg)"/>
+  <rect width="1024" height="5" fill="#42e8bd"/>
+
+  <text x="32" y="46" class="title">SEED3 / P4 AUDIO</text>
+  <text x="34" y="70" class="sub">LOW-LATENCY USB AUDIO MONITOR</text>
+
+  <g class="chip">
+    <rect x="420" y="22" width="112" height="42" rx="12"/>
+    <rect x="544" y="22" width="96" height="42" rx="12"/>
+    <rect x="652" y="22" width="110" height="42" rx="12"/>
+  </g>
+  <g fill="#d7e2ef" font-size="14" font-weight="600" text-anchor="middle">
+    <text x="476" y="48">44.1–96 kHz</text>
+    <text x="592" y="48">24 bit</text>
+    <text x="707" y="48">USB HS</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="786" y="14" width="210" height="60" rx="15" fill="#0e1c2b" stroke="#28405a"/>
+    <text x="802" y="34" fill="#7f93aa" font-size="12" font-weight="600" letter-spacing="1">SEED3 CPU</text>
+    <rect x="802" y="49" width="125" height="10" rx="5" fill="#203145"/>
+    <rect x="802" y="49" width="30" height="10" rx="5" fill="#42e8bd"/>
+    <text x="978" y="49" fill="#42e8bd" font-size="20" font-weight="700" text-anchor="end">24%</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="28" y="104" width="210" height="420" rx="20" fill="#0c1827" stroke="#1b3047"/>
+    <text x="48" y="140" fill="#a8bbcf" font-size="14" font-weight="700" letter-spacing="2">LIVE MONITOR</text>
+    <text x="48" y="170" fill="#42e8bd" font-size="11" font-weight="700" letter-spacing="1">INPUT / MICROPHONE</text>
+    <text x="48" y="207" fill="#f5f8fc" font-size="32" font-weight="700">96</text>
+    <text x="122" y="205" fill="#42e8bd" font-size="14" font-weight="700">kHz</text>
+    <circle cx="53" cy="229" r="5" fill="#ffca68"/>
+    <text x="68" y="234" fill="#ffca68" font-size="12" font-weight="700">MIC: READY</text>
+    <line x1="48" y1="251" x2="218" y2="251" stroke="#1a2e43"/>
+    <text x="48" y="278" fill="#8ba9ff" font-size="11" font-weight="700" letter-spacing="1">OUTPUT / PLAYBACK</text>
+    <text x="48" y="315" fill="#f5f8fc" font-size="32" font-weight="700">44.1</text>
+    <text x="127" y="313" fill="#8ba9ff" font-size="14" font-weight="700">kHz</text>
+    <circle cx="53" cy="337" r="5" fill="#ffca68"/>
+    <text x="68" y="342" fill="#ffca68" font-size="12" font-weight="700">OUTPUT: READY</text>
+    <text x="48" y="378" fill="#c1d0df" font-size="12" font-weight="600">FORMAT  PCM24</text>
+    <text x="48" y="402" fill="#c1d0df" font-size="12" font-weight="600">USB  HIGH SPEED / UAC2</text>
+    <text x="48" y="426" fill="#c1d0df" font-size="12" font-weight="600">CLOCK  SEED3 MASTER</text>
+    <line x1="48" y1="472" x2="218" y2="472" stroke="#1a2e43"/>
+    <text x="48" y="498" fill="#627a94" font-size="12">SPI 20 MHz  •  CRC 0</text>
+  </g>
+
+  <text x="270" y="108" fill="#42e8bd" font-size="12" font-weight="700" letter-spacing="2">INPUT  •  SEED3 ADC</text>
+  <text x="626" y="108" fill="#8ba9ff" font-size="12" font-weight="700" letter-spacing="2">OUTPUT  •  USB PLAYBACK</text>
+
+  <g filter="url(#shadow)">
+    <rect class="card" x="264" y="120" width="150" height="404" rx="20"/>
+    <rect class="card" x="424" y="120" width="150" height="404" rx="20"/>
+    <rect class="card" x="620" y="120" width="150" height="404" rx="20"/>
+    <rect class="card" x="780" y="120" width="150" height="404" rx="20"/>
+  </g>
+
+  <g class="channel center">
+    <text x="339" y="160">IN 1</text><text x="499" y="160">IN 2</text>
+    <text x="695" y="160">OUT 1</text><text x="855" y="160">OUT 2</text>
+  </g>
+  <g class="label center">
+    <text x="339" y="192">-8.4 dB</text><text x="499" y="192">-11.2 dB</text>
+    <text x="695" y="192">-14.5 dB</text><text x="855" y="192">-7.8 dB</text>
+  </g>
+
+  <g>
+    <rect x="318" y="212" width="42" height="236" rx="21" fill="#17283a" stroke="#294158"/>
+    <rect x="478" y="212" width="42" height="236" rx="21" fill="#17283a" stroke="#294158"/>
+    <rect x="674" y="212" width="42" height="236" rx="21" fill="#17283a" stroke="#294158"/>
+    <rect x="834" y="212" width="42" height="236" rx="21" fill="#17283a" stroke="#294158"/>
+    <rect x="324" y="264" width="30" height="178" rx="15" fill="url(#inLevel)" filter="url(#glowIn)"/>
+    <rect x="484" y="292" width="30" height="150" rx="15" fill="url(#inLevel)" filter="url(#glowIn)"/>
+    <rect x="680" y="314" width="30" height="128" rx="15" fill="url(#outLevel)" filter="url(#glowOut)"/>
+    <rect x="840" y="273" width="30" height="169" rx="15" fill="url(#outLevel)" filter="url(#glowOut)"/>
+  </g>
+  <g stroke="#3c526a" stroke-width="1" opacity=".75">
+    <line x1="310" y1="235" x2="317" y2="235"/><line x1="310" y1="291" x2="317" y2="291"/><line x1="310" y1="354" x2="317" y2="354"/><line x1="310" y1="419" x2="317" y2="419"/>
+    <line x1="470" y1="235" x2="477" y2="235"/><line x1="470" y1="291" x2="477" y2="291"/><line x1="470" y1="354" x2="477" y2="354"/><line x1="470" y1="419" x2="477" y2="419"/>
+    <line x1="666" y1="235" x2="673" y2="235"/><line x1="666" y1="291" x2="673" y2="291"/><line x1="666" y1="354" x2="673" y2="354"/><line x1="666" y1="419" x2="673" y2="419"/>
+    <line x1="826" y1="235" x2="833" y2="235"/><line x1="826" y1="291" x2="833" y2="291"/><line x1="826" y1="354" x2="833" y2="354"/><line x1="826" y1="419" x2="833" y2="419"/>
+  </g>
+  <g class="tiny center">
+    <text x="339" y="485">PEAK  -3.1</text><text x="499" y="485">PEAK  -4.8</text>
+    <text x="695" y="485">PEAK  -6.3</text><text x="855" y="485">PEAK  -2.7</text>
+  </g>
+
+  <line x1="32" y1="544" x2="992" y2="544" stroke="#14283d"/>
+  <text x="512" y="572" class="tiny center">SEED3 CLOCK LOCKED     •     USB AUDIO 2.0     •     2 IN / 2 OUT     •     BUFFER 1 ms</text>
+</svg>
