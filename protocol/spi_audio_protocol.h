@@ -27,6 +27,8 @@ enum {
     SPI_AUDIO_FLAG_XRUN = 1U << 2,
     SPI_AUDIO_FLAG_TEST_TONES = 1U << 3,
     SPI_AUDIO_FLAG_SESSION_START = 1U << 4,
+    /* Desired DSP graph state from P4. The fixed frame layout is unchanged. */
+    SPI_AUDIO_FLAG_PEDALBOARD_ENABLED = 1U << 5,
 };
 
 enum {
@@ -35,11 +37,26 @@ enum {
     SPI_AUDIO_STATUS_RX_HEADER_ERROR = 1U << 2,
     SPI_AUDIO_STATUS_RX_CRC_ERROR = 1U << 3,
     SPI_AUDIO_STATUS_RX_SEQUENCE_ERROR = 1U << 4,
+    /* Seed3 acknowledgement of SPI_AUDIO_FLAG_PEDALBOARD_ENABLED. */
+    SPI_AUDIO_STATUS_PEDALBOARD_ENABLED = 1U << 5,
     /* Bits 8..14 carry a 0..100 percent Seed3 CPU load sample. The wire
      * layout and protocol version stay unchanged; low bits remain sticky
      * transport errors. */
     SPI_AUDIO_STATUS_CPU_SHIFT = 8U,
     SPI_AUDIO_STATUS_CPU_MASK = 0x7f00U,
+};
+
+/* Direction-specific control carried in header.status from P4 to Seed3.
+ * Seed3-to-P4 uses the same upper status bits for CPU telemetry, so these
+ * values are intentionally decoded only by the Seed3 receiver.  The fixed
+ * 288-byte frame and protocol version remain unchanged. */
+enum {
+    SPI_AUDIO_CONTROL_CAPTURE_MASK_SHIFT = 8U,
+    SPI_AUDIO_CONTROL_CAPTURE_MASK = 0x0300U,
+    SPI_AUDIO_CONTROL_PLAYBACK_MASK_SHIFT = 10U,
+    SPI_AUDIO_CONTROL_PLAYBACK_MASK = 0x0c00U,
+    SPI_AUDIO_CONTROL_CHANNEL_MASK = 0x03U,
+    SPI_AUDIO_CONTROL_CHANNEL_MASKS_VALID = 0x8000U,
 };
 
 typedef struct __attribute__((packed)) {
@@ -158,6 +175,31 @@ static inline uint8_t spi_audio_status_cpu_percent(uint16_t status)
         (uint16_t)((status & SPI_AUDIO_STATUS_CPU_MASK) >>
                    SPI_AUDIO_STATUS_CPU_SHIFT);
     return (uint8_t)(percent <= 100U ? percent : 100U);
+}
+
+static inline uint16_t spi_audio_control_with_channel_masks(
+    uint16_t status, uint8_t capture_mask, uint8_t playback_mask)
+{
+    return (uint16_t)(
+        (status & ~(SPI_AUDIO_CONTROL_CAPTURE_MASK |
+                    SPI_AUDIO_CONTROL_PLAYBACK_MASK)) |
+        ((capture_mask & SPI_AUDIO_CONTROL_CHANNEL_MASK)
+         << SPI_AUDIO_CONTROL_CAPTURE_MASK_SHIFT) |
+        ((playback_mask & SPI_AUDIO_CONTROL_CHANNEL_MASK)
+         << SPI_AUDIO_CONTROL_PLAYBACK_MASK_SHIFT) |
+        SPI_AUDIO_CONTROL_CHANNEL_MASKS_VALID);
+}
+
+static inline uint8_t spi_audio_control_capture_mask(uint16_t status)
+{
+    return (uint8_t)((status & SPI_AUDIO_CONTROL_CAPTURE_MASK) >>
+                     SPI_AUDIO_CONTROL_CAPTURE_MASK_SHIFT);
+}
+
+static inline uint8_t spi_audio_control_playback_mask(uint16_t status)
+{
+    return (uint8_t)((status & SPI_AUDIO_CONTROL_PLAYBACK_MASK) >>
+                     SPI_AUDIO_CONTROL_PLAYBACK_MASK_SHIFT);
 }
 
 static inline bool spi_audio_header_is_valid(const SpiAudioHeader *header)

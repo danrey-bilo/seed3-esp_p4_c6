@@ -40,11 +40,13 @@ static p4_uac2_stats_t stats;
 static uint32_t cap_active, play_active, play_epoch, initialised;
 static uint32_t requested_rate = 48000, runtime_rate = 48000, confirmed_rate;
 static uint32_t capture_selected_rate = 48000, playback_selected_rate = 48000;
+static uint32_t rate_conflict;
 static uint32_t source_epoch, applied_source_epoch;
 static uint32_t buffer_ms = 1, prefill_frames = 64, applied_buffer_ms = 1;
 static uint32_t cap_frame_bytes = UAC_FRAME_BYTES, play_frame_bytes = UAC_FRAME_BYTES, packet_phase;
 static uint32_t queued_frames, source_frames, last_source, last_source_ms;
 static uint32_t usb_ticks, clock_ticks, clock_frames;
+static uint32_t host_alive, host_sof_age_ms = UINT32_MAX;
 static uint32_t rate_q16 = 6u << 16, fill_q8 = P4_UAC2_PREFILL << 8;
 static uint32_t last_feedback_ms;
 static uint16_t last_sof;
@@ -264,6 +266,7 @@ static bool stream_set(unsigned itf, uint8_t alt) {
         STORE(play_active, enable);
     }
     usbd_spin_unlock(false);
+    if (!LOAD(cap_active) && !LOAD(play_active)) STORE(rate_conflict, 0);
     return true;
 }
 static void driver_reset(uint8_t port) {
@@ -277,6 +280,7 @@ static void driver_reset(uint8_t port) {
     queued_frames = 0;
     capture_started = false;
     capture_start_trimmed = false;
+    STORE(rate_conflict, 0);
     suspended = false;
     last_sof = p4_dwc2_frame_number();
     usbd_spin_unlock(false);
@@ -316,11 +320,16 @@ static bool control_impl(uint8_t port, uint8_t stage, const tusb_control_request
             if (!audio_rate_supported(rate) ||
                 (tud_speed_get() != TUSB_SPEED_HIGH && rate > 48000)) return false;
             // One physical clock. Never silently retune another live stream.
-            if (rate != LOAD(requested_rate) && (LOAD(cap_active) || LOAD(play_active))) return false;
+            if (rate != LOAD(requested_rate) && (LOAD(cap_active) || LOAD(play_active))) {
+                STORE(rate_conflict, 1);
+                ADD(stats.rate_conflicts, 1);
+                return false;
+            }
             if (rate != LOAD(requested_rate)) {
                 STORE(requested_rate, rate);
                 ADD(stats.rate_changes, 1);
             }
+            STORE(rate_conflict, 0);
             // A shared UAC2 clock control has no direction identifier. While
             // one endpoint is live its owner is unambiguous; otherwise the
             // value is latched by that endpoint's following SET_INTERFACE.
@@ -624,26 +633,59 @@ static void usb_task(void *arg) {
     tusb_rhport_init_t init = { .role = TUSB_ROLE_DEVICE, .speed = TUSB_SPEED_HIGH };
     if (!tusb_init(UAC_PORT, &init)) { STORE(initialised, 3); vTaskDelete(NULL); return; }
     STORE(initialised, 2);
+    uint32_t observed_sof_ticks = LOAD(usb_ticks);
+    uint32_t last_sof_ms = (uint32_t)(esp_timer_get_time() / 1000);
+    uint32_t controller_started_ms = last_sof_ms;
+    bool saw_sof = false;
     for (;;) {
         // Audio notifications wake this task immediately; USB control requests
         // have a bounded 1ms polling fallback and are handled in this same task.
         ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(1));
         tud_task_ext(0, false);
-        if (p4_dwc2_faulted()) {
-            ADD(stats.controller_faults, 1);
+        const uint32_t now_ms = (uint32_t)(esp_timer_get_time() / 1000);
+        const uint32_t current_sof_ticks = LOAD(usb_ticks);
+        if (current_sof_ticks != observed_sof_ticks) {
+            observed_sof_ticks = current_sof_ticks;
+            last_sof_ms = now_ms;
+            saw_sof = true;
+            STORE(host_alive, 1);
+            STORE(host_sof_age_ms, 0);
+        } else if (saw_sof && now_ms - last_sof_ms >= 250U && !suspended) {
+            // A self-powered P4 can keep stale TinyUSB connected/mounted bits
+            // after D+/D- are physically removed. SOF progress is the actual
+            // host heartbeat and therefore the source of truth.
+            STORE(host_alive, 0);
+            STORE(host_sof_age_ms, now_ms - last_sof_ms);
+        } else if (saw_sof) {
+            STORE(host_sof_age_ms, now_ms - last_sof_ms);
+        }
+
+        const bool controller_fault = p4_dwc2_faulted();
+        const bool stale_attached_bus =
+            ((saw_sof && now_ms - last_sof_ms >= 500U) ||
+             (!saw_sof && now_ms - controller_started_ms >= 1500U)) &&
+            (tud_connected() || tud_mounted()) && !suspended;
+        if (controller_fault || stale_attached_bus) {
+            if (controller_fault) ADD(stats.controller_faults, 1);
             STORE(cap_active, 0); STORE(play_active, 0);
+            STORE(host_alive, 0);
+            STORE(host_sof_age_ms, UINT32_MAX);
             tud_disconnect();
             // Stop controller/interrupts before any DMA buffer can be recycled.
             tusb_deinit(UAC_PORT);
             vTaskDelay(pdMS_TO_TICKS(25));
             if (!tusb_init(UAC_PORT, &init)) { STORE(initialised, 3); vTaskDelete(NULL); return; }
             ADD(stats.controller_restarts, 1);
+            observed_sof_ticks = LOAD(usb_ticks);
+            last_sof_ms = controller_started_ms =
+                (uint32_t)(esp_timer_get_time() / 1000);
+            saw_sof = false;
             continue;
         }
         format_update();
         playback_drain();
         capture_prepare();
-        feedback_update((uint32_t)(esp_timer_get_time() / 1000));
+        feedback_update(now_ms);
         watchdog();
     }
 }
@@ -664,6 +706,20 @@ esp_err_t p4_uac2_init(void) {
 bool p4_uac2_capture_active(void) { return LOAD(cap_active) != 0; }
 bool p4_uac2_playback_active(void) { return LOAD(play_active) != 0; }
 uint32_t p4_uac2_requested_rate(void) { return LOAD(requested_rate); }
+esp_err_t p4_uac2_set_local_rate(uint32_t sample_rate) {
+    if (!audio_rate_supported(sample_rate)) return ESP_ERR_INVALID_ARG;
+    if (LOAD(cap_active) || LOAD(play_active)) return ESP_ERR_INVALID_STATE;
+    // Once a host has started enumeration it owns the shared UAC2 clock. This
+    // also closes the short window before tud_mounted() becomes true.
+    if (LOAD(initialised) >= 2 && LOAD(host_alive)) return ESP_ERR_INVALID_STATE;
+    if (sample_rate != LOAD(requested_rate)) {
+        STORE(requested_rate, sample_rate);
+        STORE(rate_conflict, 0);
+        ADD(stats.rate_changes, 1);
+        if (usb_task_handle) xTaskNotifyGive(usb_task_handle);
+    }
+    return ESP_OK;
+}
 void p4_uac2_source_rate(uint32_t actual_rate, bool new_session) {
     if (!audio_rate_supported(actual_rate)) return;
     bool changed = actual_rate != LOAD(confirmed_rate);
@@ -721,7 +777,7 @@ void p4_uac2_get_stats(p4_uac2_stats_t *out) {
     // Individual naturally aligned counters, never a 64-bit ISR atomic or lock.
     uint32_t *dst = (uint32_t *)out;
     const uint32_t *src = (const uint32_t *)&stats;
-    for (unsigned i = 0; i < offsetof(p4_uac2_stats_t, mounted) / 4; ++i) dst[i] = LOAD(src[i]);
+    for (unsigned i = 0; i < offsetof(p4_uac2_stats_t, connected) / 4; ++i) dst[i] = LOAD(src[i]);
     out->initialization_state = LOAD(initialised);
     out->sample_rate = LOAD(runtime_rate);
     out->source_sample_rate = LOAD(confirmed_rate);
@@ -735,10 +791,15 @@ void p4_uac2_get_stats(p4_uac2_stats_t *out) {
     out->capture_fill = audio_ring_fill(&capture_ring);
     out->playback_fill = audio_ring_fill(&playback_ring);
     out->capture_queued_frames = LOAD(queued_frames);
+    out->usb_sof_age_ms = LOAD(host_sof_age_ms);
+    out->connected = tud_connected();
     out->mounted = tud_mounted();
+    out->suspended = tud_suspended();
     out->high_speed = tud_speed_get() == TUSB_SPEED_HIGH;
+    out->host_alive = LOAD(host_alive) != 0;
     out->capture_active = p4_uac2_capture_active();
     out->playback_active = p4_uac2_playback_active();
+    out->rate_conflict = LOAD(rate_conflict) != 0;
     if (out->capture_min_fill == UINT32_MAX) out->capture_min_fill = 0;
     if (out->playback_min_fill == UINT32_MAX) out->playback_min_fill = 0;
 }

@@ -94,6 +94,9 @@ uint32_t g_rx_header_errors = 0U;
 uint32_t g_rx_crc_errors = 0U;
 uint32_t g_rx_sequence_errors = 0U;
 uint16_t g_sticky_status = 0U;
+bool     g_pedalboard_enabled = true;
+volatile uint32_t g_capture_channel_mask = SPI_AUDIO_CONTROL_CHANNEL_MASK;
+volatile uint32_t g_playback_channel_mask = SPI_AUDIO_CONTROL_CHANNEL_MASK;
 
 float g_left_phase = 0.0f;
 float g_right_phase = 0.0f;
@@ -193,6 +196,10 @@ void AudioCallback(AudioHandle::InputBuffer  input,
     if(size != kBlockFrames)
         __atomic_fetch_add(&g_audio_size_errors, 1U, __ATOMIC_RELAXED);
 
+    const uint32_t capture_mask = __atomic_load_n(
+        &g_capture_channel_mask, __ATOMIC_ACQUIRE);
+    const uint32_t playback_mask = __atomic_load_n(
+        &g_playback_channel_mask, __ATOMIC_ACQUIRE);
     const uint32_t playback_read
         = __atomic_load_n(&g_playback_read, __ATOMIC_RELAXED);
     const uint32_t playback_write
@@ -201,7 +208,7 @@ void AudioCallback(AudioHandle::InputBuffer  input,
     const AudioBlock* playback
         = have_playback ? &g_playback_ring[playback_read % kRingBlocks]
                         : nullptr;
-    if(!have_playback)
+    if(!have_playback && playback_mask != 0U)
         __atomic_fetch_add(&g_playback_underruns, 1U, __ATOMIC_RELAXED);
 
     const uint32_t capture_write
@@ -220,38 +227,63 @@ void AudioCallback(AudioHandle::InputBuffer  input,
     else
         __atomic_fetch_add(&g_capture_overruns, 1U, __ATOMIC_RELAXED);
 
-    for(std::size_t frame = 0U; frame < size; ++frame)
+    if((capture_mask | playback_mask) == 0U)
     {
-        const float playback_left
-            = have_playback && frame < kBlockFrames
-                  ? LeftAlignedPcm24ToFloat(
-                        playback->samples[frame * SPI_AUDIO_CHANNELS])
-                  : 0.0f;
-        const float playback_right
-            = have_playback && frame < kBlockFrames
-                  ? LeftAlignedPcm24ToFloat(
-                        playback->samples[frame * SPI_AUDIO_CHANNELS + 1U])
-                  : 0.0f;
-
-        // The local analog path never depends on P4. USB playback is mixed in
-        // at -6 dB and disappears cleanly when the link has no valid block.
-        output[0][frame]
-            = ClampAudio(input[0][frame] + playback_left * kPlaybackMixGain);
-        output[1][frame]
-            = ClampAudio(input[1][frame] + playback_right * kPlaybackMixGain);
-
-        const float capture_left
-            = kUseTestTones ? NextSine(g_left_phase, kLeftFrequency)
-                            : input[0][frame];
-        const float capture_right
-            = kUseTestTones ? NextSine(g_right_phase, kRightFrequency)
-                            : input[1][frame];
-        if(capture != nullptr && frame < kBlockFrames)
+        // Keep the audio clock and fixed SPI control cadence alive, but avoid
+        // all floating-point conversion/mixing while every route is muted.
+        std::memset(output[0], 0, size * sizeof(float));
+        std::memset(output[1], 0, size * sizeof(float));
+        if(capture != nullptr)
+            std::memset(capture->samples, 0, sizeof(capture->samples));
+    }
+    else
+    {
+        for(std::size_t frame = 0U; frame < size; ++frame)
         {
-            capture->samples[frame * SPI_AUDIO_CHANNELS]
-                = FloatToLeftAlignedPcm24(capture_left);
-            capture->samples[frame * SPI_AUDIO_CHANNELS + 1U]
-                = FloatToLeftAlignedPcm24(capture_right);
+            for(std::size_t channel = 0U; channel < SPI_AUDIO_CHANNELS;
+                ++channel)
+            {
+                const uint32_t bit = 1U << channel;
+                const bool capture_enabled = (capture_mask & bit) != 0U;
+                const bool playback_enabled = (playback_mask & bit) != 0U;
+                const std::size_t sample =
+                    frame * SPI_AUDIO_CHANNELS + channel;
+
+                if(capture != nullptr && frame < kBlockFrames)
+                {
+                    if(capture_enabled)
+                    {
+                        const float source = kUseTestTones
+                            ? (channel == 0U
+                                ? NextSine(g_left_phase, kLeftFrequency)
+                                : NextSine(g_right_phase, kRightFrequency))
+                            : input[channel][frame];
+                        capture->samples[sample]
+                            = FloatToLeftAlignedPcm24(source);
+                    }
+                    else
+                    {
+                        capture->samples[sample] = 0;
+                    }
+                }
+
+                if(playback_enabled)
+                {
+                    const float usb_playback =
+                        have_playback && frame < kBlockFrames
+                            ? LeftAlignedPcm24ToFloat(
+                                  playback->samples[sample])
+                            : 0.0f;
+                    const float local_input = capture_enabled
+                        ? input[channel][frame] : 0.0f;
+                    output[channel][frame] = ClampAudio(
+                        local_input + usb_playback * kPlaybackMixGain);
+                }
+                else
+                {
+                    output[channel][frame] = 0.0f;
+                }
+            }
         }
     }
 
@@ -350,6 +382,8 @@ void StartNextTransfer()
     if(kUseTestTones)
         flags |= SPI_AUDIO_FLAG_TEST_TONES;
     uint16_t status = g_sticky_status;
+    if(g_pedalboard_enabled)
+        status |= SPI_AUDIO_STATUS_PEDALBOARD_ENABLED;
     if(__atomic_load_n(&g_capture_overruns, __ATOMIC_RELAXED) != 0U)
     {
         flags |= SPI_AUDIO_FLAG_XRUN;
@@ -471,6 +505,19 @@ void FinishTransfer()
     }
     g_expected_rx_sequence = rx.header.sequence + 1U;
     g_have_rx_sequence = true;
+    g_pedalboard_enabled
+        = (rx.header.flags & SPI_AUDIO_FLAG_PEDALBOARD_ENABLED) != 0U;
+    if((rx.header.status & SPI_AUDIO_CONTROL_CHANNEL_MASKS_VALID) != 0U)
+    {
+        __atomic_store_n(
+            &g_capture_channel_mask,
+            spi_audio_control_capture_mask(rx.header.status),
+            __ATOMIC_RELEASE);
+        __atomic_store_n(
+            &g_playback_channel_mask,
+            spi_audio_control_playback_mask(rx.header.status),
+            __ATOMIC_RELEASE);
+    }
     if(rx.header.sample_rate != g_sample_rate)
     {
         ChangeAudioRate(rx.header.sample_rate);

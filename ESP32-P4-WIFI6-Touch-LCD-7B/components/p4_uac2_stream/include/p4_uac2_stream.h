@@ -28,11 +28,13 @@ typedef struct {
     uint32_t endpoint_recoveries, controller_restarts, controller_faults;
     uint32_t capture_opens, playback_opens, usb_resets, usb_suspends;
     uint32_t feedback_packets, feedback_16_16; // wire Q16.16 frames / OUT packet (HS: 0.5 ms)
-    uint32_t control_requests, control_stalls;
+    uint32_t control_requests, control_stalls, rate_conflicts;
     uint32_t capture_fill, playback_fill, capture_queued_frames;
     uint32_t capture_min_fill, capture_max_fill, playback_min_fill, playback_max_fill;
     uint32_t capture_max_gap_uframes, playback_max_gap_uframes;
-    bool mounted, high_speed, capture_active, playback_active;
+    uint32_t usb_sof_age_ms;
+    bool connected, mounted, suspended, high_speed;
+    bool host_alive, capture_active, playback_active, rate_conflict;
 } p4_uac2_stats_t;
 
 // Singleton, task-context API. Initialize once; starts USB asynchronously.
@@ -46,6 +48,9 @@ esp_err_t p4_uac2_init(void);
 // block. new_session is the peer's explicit restart/format epoch indication.
 uint32_t p4_uac2_requested_rate(void);
 void p4_uac2_source_rate(uint32_t actual_rate, bool new_session);
+// Select the preferred standalone rate before USB enumeration or after the
+// host is physically disconnected. Never overrides an attached Windows host.
+esp_err_t p4_uac2_set_local_rate(uint32_t sample_rate);
 // Device-side prefill budget, not a Windows/ASIO buffer size. 1, 2 or 4 ms;
 // at least two 32-frame SPI blocks. Change only with both host streams closed.
 esp_err_t p4_uac2_set_buffer_ms(uint32_t milliseconds);

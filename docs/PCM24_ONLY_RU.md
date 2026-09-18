@@ -126,6 +126,9 @@ $audioPython = 'C:\Espressif\python_env\idf5.5_py3.11_env\Scripts\python.exe'
 драйвер без Code 10: 2 IN + 2 OUT, HS. Seed по UART подтвердил `CAPTURE_ADC`.
 
 - 17 offline regression tests — PASS, включая signed PCM24, границы и порчу.
+- Живое переключение масок `3/3 → 1/1 → 0/0 → 3/3` — PASS; при 48 кГц
+  CPU Seed3 изменяется примерно `13% → 11% → 10% → 13%`, ошибок SPI/CRC/
+  sequence не добавляется.
 - WASAPI probe: все четыре частоты PCM24 packed доступны в обоих направлениях;
   все восемь проверок PCM16 корректно отклонены как unsupported format.
 - 8 duplex-проверок по 12 с (4 частоты × minimum/10 мс): точное число кадров,
