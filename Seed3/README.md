@@ -24,9 +24,13 @@
 | :--- | :--- | :--- |
 | SCLK / MOSI / MISO / CS | D8 / D10 / D9 / D7 | GPIO2 / GPIO3 / GPIO4 / GPIO5 |
 | READY | D0 | GPIO28 |
-| TX → RX | D13 | GPIO30 |
-| RX ← TX | D14 | GPIO31 |
+| TX → RX | D13 / PB6 · контакт 14 | GPIO30 |
+| RX ← TX | D14 / PB7 · контакт 15 | GPIO31 |
 | Земля | DGND | GND |
+
+Номера физических контактов **14/15** и программные имена **D13/D14**
+обозначают одну пару выводов. `daisy::seed::D15` — другой вывод (PC0),
+не RX этого USART1. [Проверка UART](../docs/wiring.md#uart-нумерация-и-проверка).
 
 ![Проводка плат](../docs/assets/spi-wiring.svg)
 

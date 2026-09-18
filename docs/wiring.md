@@ -25,8 +25,8 @@ P4, а не второй контакт разъёма. Сверяйте мар�
 | SPI MISO / capture | D9 | GPIO4 | Seed → P4 |
 | SPI CS | D7 | GPIO5 | P4 → Seed |
 | READY | D0 | GPIO28 | Seed → P4 |
-| UART TX Seed | D13 | GPIO30 / RX | Seed → P4 |
-| UART RX Seed | D14 | GPIO31 / TX | P4 → Seed |
+| UART TX Seed | D13 / PB6 · контакт 14 | GPIO30 / RX | Seed → P4 |
+| UART RX Seed | D14 / PB7 · контакт 15 | GPIO31 / TX | P4 → Seed |
 | Общая земля | DGND | GND | Общее соединение |
 
 P4 — **SPI master**, Seed — **SPI slave**. При этом аудиочасы принадлежат Seed:
@@ -45,6 +45,28 @@ P4 — **SPI master**, Seed — **SPI slave**. При этом аудиочас�
 
 SPI mode 0, SCLK 20 МГц. Layout пакета и контроль CRC описаны в
 [spi_audio_protocol.h](../protocol/spi_audio_protocol.h).
+
+### UART: нумерация и проверка
+
+**Физический контакт 14 — это D13 / PB6 / USART1_TX; контакт 15 —
+D14 / PB7 / USART1_RX.** Номер контакта не является суффиксом имени `D…`.
+`daisy::seed::D15` соответствует PC0 (контакт 22), а не RX этого USART1.
+Соответствие приведено в [таблице выводов производителя](https://github.com/electro-smith/DaisyWiki/blob/master/resources/Daisy_Seed_Pinout.csv)
+и [определениях libDaisy](https://github.com/electro-smith/libDaisy/blob/master/src/daisy_seed.h).
+
+UART включён в обеих прошивках: **115200 baud, 8N1**. Он передаёт сервисные
+команды и ответы Seed; звук и согласование частоты идут по SPI.
+Чтобы проверить оба направления, закройте аудиопотоки и serial monitor,
+затем из корня репозитория выполните:
+
+```powershell
+& 'C:\Espressif\python_env\idf5.5_py3.11_env\Scripts\python.exe' tools/audio_control.py --port COM6 --command 'seed stats' --seconds 3
+```
+
+Ответ `UART SEED:CPU rate=...` означает, что команда дошла P4 → Seed,
+а ответ вернулся Seed → P4. Одна лишь строка `console received: [seed stats]`
+подтверждает только приём команды самим P4. Проверка не сбрасывает платы
+и не переводит Seed в DFU; при открытых аудиопотоках P4 отклонит запрос.
 
 ## 2. USB и питание
 

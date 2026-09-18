@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="906" viewBox="0 0 1200 906" role="img" aria-labelledby="title desc">
 <title id="title">Подключение SPI: Daisy Seed3 и ESP32-P4</title>
-<desc id="desc">D8 — GPIO2 SCLK; D10 — GPIO3 MOSI; D9 — GPIO4 MISO; D7 — GPIO5 CS; D0 — GPIO28 READY; D13 TX — GPIO30 RX; D14 RX — GPIO31 TX; DGND — GND. Линии 3V3 не соединять. Это карта сигналов, не физическое расположение контактов.</desc>
+<desc id="desc">D8 — GPIO2 SCLK; D10 — GPIO3 MOSI; D9 — GPIO4 MISO; D7 — GPIO5 CS; D0 — GPIO28 READY; D13/PB6 TX, физический контакт 14 — GPIO30 RX; D14/PB7 RX, физический контакт 15 — GPIO31 TX; DGND — GND. Линии 3V3 не соединять. Это карта сигналов, не физическое расположение контактов.</desc>
 <defs><marker id="arrow0" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="13" markerHeight="13" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L12 6L0 12Z" fill="#7856c2"/></marker>
 <marker id="arrow1" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="13" markerHeight="13" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L12 6L0 12Z" fill="#2563b7"/></marker>
 <marker id="arrow2" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="13" markerHeight="13" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L12 6L0 12Z" fill="#07866b"/></marker>
@@ -12,7 +12,7 @@
 <rect width="1200" height="906" rx="20" fill="#f6f8fc"/>
 <g font-family="Segoe UI, Arial, sans-serif">
   <text x="52" y="66" font-size="34" font-weight="700" fill="#142337">Между платами — SPI + READY + UART</text>
-  <text x="52" y="104" font-size="20" fill="#52647b">Сигнальные имена · расположение физических контактов не показано</text>
+  <text x="52" y="104" font-size="20" fill="#52647b">D… — имена libDaisy · расположение физических контактов не показано</text>
   <rect x="52" y="144" width="310" height="600" rx="16" fill="#e9f7f1" stroke="#b0d9ca" stroke-width="2"/>
   <rect x="838" y="144" width="310" height="600" rx="16" fill="#ecf2fc" stroke="#b4c9e8" stroke-width="2"/>
   <text x="82" y="186" font-size="27" font-weight="700" fill="#115947">Daisy Seed3</text>
@@ -45,11 +45,13 @@
   <path d="M370 500H828" fill="none" stroke="#0b8696" stroke-width="3"  marker-end="url(#arrow4)"/>
   <text x="600" y="488" text-anchor="middle" font-size="20" font-weight="600" fill="#0b8696">READY · данные готовы</text>
 <text x="82" y="568" font-size="23" font-weight="600" fill="#173c32">D13 / TX</text>
+  <text x="82" y="591" font-size="18" fill="#43695d">контакт 14 · PB6</text>
   <text x="1118" y="568" text-anchor="end" font-size="23" font-weight="600" fill="#253c5c">GPIO30 / RX</text>
   <circle cx="362" cy="560" r="5" fill="#526781"/><circle cx="838" cy="560" r="5" fill="#526781"/>
   <path d="M370 560H828" fill="none" stroke="#526781" stroke-width="3" stroke-dasharray="8 5" marker-end="url(#arrow5)"/>
   <text x="600" y="548" text-anchor="middle" font-size="20" font-weight="600" fill="#526781">UART · управление</text>
 <text x="82" y="628" font-size="23" font-weight="600" fill="#173c32">D14 / RX</text>
+  <text x="82" y="651" font-size="18" fill="#43695d">контакт 15 · PB7</text>
   <text x="1118" y="628" text-anchor="end" font-size="23" font-weight="600" fill="#253c5c">GPIO31 / TX</text>
   <circle cx="362" cy="620" r="5" fill="#526781"/><circle cx="838" cy="620" r="5" fill="#526781"/>
   <path d="M830 620H372" fill="none" stroke="#526781" stroke-width="3" stroke-dasharray="8 5" marker-end="url(#arrow6)"/>

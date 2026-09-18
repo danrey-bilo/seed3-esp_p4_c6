@@ -55,9 +55,14 @@ USB-поток упакован в 24 бита; внутри SPI и API испо
 | MISO · запись | D9 | GPIO4 | Seed → P4 |
 | CS | D7 | GPIO5 | P4 → Seed |
 | READY | D0 | GPIO28 | Seed → P4 |
-| UART · Seed TX | D13 | GPIO30 / RX | Seed → P4 |
-| UART · Seed RX | D14 | GPIO31 / TX | P4 → Seed |
+| UART · Seed TX | D13 / PB6 · **контакт 14** | GPIO30 / RX | Seed → P4 |
+| UART · Seed RX | D14 / PB7 · **контакт 15** | GPIO31 / TX | P4 → Seed |
 | Общая земля | DGND | GND | Общее соединение |
+
+**Не путайте номер контакта и имя в libDaisy:** физические контакты **14/15**
+соответствуют **D13/D14**, а не D14/D15. UART используется для диагностики
+и команд `seed stats`, `seed reset`, `seed boot`; аудио передаётся по SPI.
+Подробнее — [обозначения и проверка UART](docs/wiring.md#uart-нумерация-и-проверка).
 
 Проводники SPI должны быть короткими. Частота SPI и аудиочасы — разные вещи:
 P4 формирует SCLK, а темп аудиоданных определяется Seed3 через READY.
