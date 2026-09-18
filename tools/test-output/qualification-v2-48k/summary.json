@@ -1,0 +1,13 @@
+{
+  "started": "2026-09-18T02:34:40+0200",
+  "capture": "98ECB128-5FF7-497E-BAB8-347A0E6C749D",
+  "render": null,
+  "rate": 48000,
+  "bits": 24,
+  "period": "min",
+  "cycles_passed": 0,
+  "completed": false,
+  "analysis_version": 2,
+  "failure": "capture: recorder exit 3: capture={0.0.1.00000000}.{98ECB128-5FF7-497E-BAB8-347A0E6C749D}\nselected={0.0.1.00000000}.{98ECB128-5FF7-497E-BAB8-347A0E6C749D}\nendpoint_volume=0,400000 (-4,46 dB)\nendpoint_channel[0]=0,400000 (-4,46 dB)\nendpoint_channel[1]=0,400000 (-4,46 dB)\nformat=tag=0xFFFE channels=2 rate=48000 bits=32 block=8 extra=22\ncapture_period default=10,000ms minimum=3,000ms requested=3,000ms\nengine_buffer=144frames latency=3,000ms\ncaptured=2880000 target=2880000 bytes=23040000 elapsed=60,208s discontinuities=0 initial_discontinuities=0 timestamp_errors=0 position_errors=1 silent_packets=0\noutput=F:\\Repos\\seed3+esp_p4_c6\\tools\\test-output\\qualification-v2-48k\\capture.wav\n ",
+  "finished": "2026-09-18T02:35:40+0200"
+}

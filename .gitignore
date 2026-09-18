@@ -361,3 +361,19 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# Hardware-test recordings are reproducible; keep reports, not raw audio.
+*.wav
+/tools/test-output/**/*.zip
+/tools/test-output/v1-reference/
+# Ad-hoc multirate diagnostics stay local; curated acceptance reports are kept.
+/tools/test-output/v2-*
+/tools/test-output/acceptance-v2-matrix/
+/tools/test-output/acceptance-v2-matrix-clockfix/
+/Seed3/firmware/suffix-test*.bin
+/Seed3/firmware/Seed3P4SaiBridgeTest.bin
+/ESP32-P4-WIFI6-Touch-LCD-7B/firmware/ESP32P4_Seed3_UAC2_Capture_Merged.bin
+/ESP32-P4-WIFI6-Touch-LCD-7B/firmware/seed3_p4_uac2_capture_test.bin
+/tools/test-output/acceptance-v2-formats/
+/tools/test-output/acceptance-v2-formats-quiet/
+/tools/test-output/acceptance-v2-formats-10ms/
+

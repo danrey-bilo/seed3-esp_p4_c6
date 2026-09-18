@@ -1,0 +1,122 @@
+{
+  "started": "2026-09-18T02:26:50+0200",
+  "completed": false,
+  "capture": "98ECB128-5FF7-497E-BAB8-347A0E6C749D",
+  "render": "81346F69-7DC4-4BA8-84A2-9D339F0C634C",
+  "period": "min",
+  "tests": [
+    {
+      "name": "01-48000-16-capture",
+      "rate": 48000,
+      "bits": 16,
+      "duplex": false,
+      "exit": 0,
+      "elapsed": 5.10899999999674,
+      "audio": {
+        "analysis_version": 2,
+        "pass": false,
+        "frames": 240000,
+        "expected_frames": 240000,
+        "format": "PCM",
+        "rate": 48000,
+        "container_bits": 16,
+        "valid_bits": 16,
+        "rms": [
+          0.17758029845562637,
+          0.1775801420037804
+        ],
+        "min_separation_db": [
+          125.94154771230251,
+          120.39063738291843
+        ],
+        "max_silence_frames_after_50ms": [
+          50,
+          50
+        ],
+        "tail_silence_frames": [
+          0,
+          0
+        ],
+        "tail_rms": [
+          0.17761707894150647,
+          0.17761704036854323
+        ],
+        "nonfinite_samples": 0,
+        "padding_errors": 0,
+        "phase_suspect_samples_after_50ms": [
+          4,
+          4
+        ],
+        "max_recurrence_error_after_50ms": [
+          0.251007080078125,
+          0.23431396484375
+        ],
+        "per_second": [
+          {
+            "second": 1,
+            "rms": [
+              0.17743309140690477,
+              0.17743230748535033
+            ],
+            "separation_db": [
+              125.94154771230251,
+              120.39063738291843
+            ]
+          },
+          {
+            "second": 2,
+            "rms": [
+              0.17761707510866892,
+              0.17761702334334262
+            ],
+            "separation_db": [
+              129.1453638201861,
+              124.60776817415837
+            ]
+          },
+          {
+            "second": 3,
+            "rms": [
+              0.17761709558775474,
+              0.1776171665421453
+            ],
+            "separation_db": [
+              131.64959320594724,
+              121.42712748500463
+            ]
+          },
+          {
+            "second": 4,
+            "rms": [
+              0.1776170749810788,
+              0.17761709537583284
+            ],
+            "separation_db": [
+              130.6987661413404,
+              121.9973826385902
+            ]
+          },
+          {
+            "second": 5,
+            "rms": [
+              0.17761707894150647,
+              0.17761704036854323
+            ],
+            "separation_db": [
+              130.92975517257182,
+              123.77570173751667
+            ]
+          }
+        ]
+      },
+      "host": [
+        "capture_period default=10,000ms minimum=3,000ms requested=3,000ms",
+        "engine_buffer=144frames latency=3,000ms",
+        "captured=240000 target=240000 bytes=960000 elapsed=5,015s discontinuities=0 initial_discontinuities=0 timestamp_errors=0 position_errors=0 silent_packets=0"
+      ]
+    }
+  ],
+  "analysis_version": 2,
+  "failure": "01-48000-16-capture: waveform acceptance failed",
+  "finished": "2026-09-18T02:26:55+0200"
+}

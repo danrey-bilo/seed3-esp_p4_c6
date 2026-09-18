@@ -1,0 +1,23 @@
+{
+  "version": "0.2.0",
+  "snapshot_date": "2026-09-18",
+  "status": "qualified test profile: HS, device 1ms, WASAPI exclusive 10ms; 3ms host minimum not qualified; see docs/TEST_REPORT_RU.md",
+  "source_component": "ESP32-P4-WIFI6-Touch-LCD-7B/components/p4_uac2_stream",
+  "sdk": "ESP-IDF 5.5.5",
+  "dependency": "espressif/tinyusb 0.19.0~3",
+  "hash_convention": "SHA-256 of UTF-8 source with CRLF normalized to LF, including final newline",
+  "source_sha256_lf_utf8": {
+    "CMakeLists.txt": "ff8ae6157ff0d4f2aa408c3e1c25dc9d8e0560c7b85b87346dd94a807ec66995",
+    "idf_component.yml": "a2ee8f05dbee7c9e2cc9a9cc1d9c50cf9efea2f1ac8e640a7810000c6056249b",
+    "p4_uac2_stream.c": "8a33fc5a536c7ad59a9f0c69f8badf650289139dc76a4fe5f2ee5cf6fc053715",
+    "usb_descriptors.c": "f842129c16eccff09e02dbf0575b26eb84c140c1b514cb3c13e176d1adc90a5d",
+    "include/p4_uac2_stream.h": "61488543abc9d70dc50a0efc1e1d39ac42f1feceacbfc2fe250355d35f7c5ce2",
+    "port/dwc2_patch.cmake": "a8a80dd76d1a4c2bfa1177967bb3eb0eb7cae060613466a23bdb1c43a674a21a",
+    "port/patch_dwc2.py": "686302699102201b8fe0cbdb5b2bed7094d5606ebf2f514914247eb468794ec3",
+    "private/audio_ring_test.h": "01826974d20df578015ac77fb6566d26e0f475089fe3fb69129f693da3307203",
+    "private/audio_ring.h": "f786be340d3e76941f8f1c933016664e384bdcbc7aaa53b2a3075e17e10608b1",
+    "private/audio_format.h": "ab21537d518800af329665e68f0ed540139b16ea0fa613122a11704256160f49",
+    "private/tusb_config.h": "45d1f3e7c98ee5c990097ee70405fd04127363ce12576250c173a842c8055085",
+    "private/usb_profile.h": "305a309107e5a0f2aabe299d3afdd89c9ac3c8f62981634e8de7611bb67e09d4"
+  }
+}

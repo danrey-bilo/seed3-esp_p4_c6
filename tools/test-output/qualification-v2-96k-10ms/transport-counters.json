@@ -1,0 +1,165 @@
+{
+  "spi_samples": 540,
+  "spi_errors_all_zero": true,
+  "spi_first": {
+    "ms": 514475,
+    "spi": 821596,
+    "err": 0,
+    "seed_status": 2,
+    "sessions": 7,
+    "echoed": 0,
+    "frame_errors": [
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "spi_last": {
+    "ms": 1077161,
+    "spi": 2188402,
+    "err": 0,
+    "seed_status": 2,
+    "sessions": 8,
+    "echoed": 0,
+    "frame_errors": [
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "usb_first": {
+    "ms": 514482,
+    "rate": 48000,
+    "seed": 48000,
+    "prefill": 64,
+    "budget": 1,
+    "changes": 6,
+    "epochs": 7,
+    "capture_bits": 24,
+    "playback_bits": 24,
+    "mounted": 1,
+    "hs": 1,
+    "active": [
+      0,
+      0
+    ],
+    "src": 26291072,
+    "cap_done": 7185639,
+    "pkts": 230607,
+    "sil": 0,
+    "inc": 391,
+    "play_rx": 3690227,
+    "play_read": 3689984,
+    "under": 0,
+    "bad": 0,
+    "recover": 28,
+    "reset": 0,
+    "fb": 1574900,
+    "fb_done": 120205,
+    "fb_inc": 124,
+    "play_pkt": 120192,
+    "play_len": 56197,
+    "ctrl": 216,
+    "capture_over": 1021,
+    "playback_over": 0,
+    "capture_fill": 0,
+    "capture_queued": 0,
+    "playback_fill": 0,
+    "capture_gap": 4,
+    "playback_gap": 4
+  },
+  "usb_last": {
+    "ms": 1077168,
+    "rate": 96000,
+    "seed": 96000,
+    "prefill": 96,
+    "budget": 1,
+    "changes": 7,
+    "epochs": 8,
+    "capture_bits": 24,
+    "playback_bits": 24,
+    "mounted": 1,
+    "hs": 1,
+    "active": [
+      0,
+      0
+    ],
+    "src": 70028864,
+    "cap_done": 43136694,
+    "pkts": 1125915,
+    "sil": 0,
+    "inc": 1699,
+    "play_rx": 32587107,
+    "play_read": 32586848,
+    "under": 0,
+    "bad": 0,
+    "recover": 78,
+    "reset": 0,
+    "fb": 3148740,
+    "fb_done": 722234,
+    "fb_inc": 135,
+    "play_pkt": 722220,
+    "play_len": 57070,
+    "ctrl": 741,
+    "capture_over": 1705,
+    "playback_over": 0,
+    "capture_fill": 0,
+    "capture_queued": 0,
+    "playback_fill": 0,
+    "capture_gap": 4,
+    "playback_gap": 4
+  },
+  "steady_duplex": [
+    {
+      "rate": 96000,
+      "bits": [
+        24,
+        24
+      ],
+      "from_ms": 731576,
+      "to_ms": 1028098,
+      "duration_ms": 296522,
+      "deltas": {
+        "sil": 0,
+        "capture_over": 0,
+        "under": 0,
+        "playback_over": 0,
+        "bad": 0,
+        "inc": 0,
+        "recover": 0,
+        "reset": 0,
+        "fb_inc": 0
+      },
+      "capture_gap_max_us": 500,
+      "playback_gap_max_us": 500
+    }
+  ],
+  "steady_duplex_counters_unchanged": true,
+  "cpu_scheduler_estimate": {
+    "96000": {
+      "busy_core0": {
+        "min_percent": 16.0,
+        "median_percent": 18.4,
+        "max_percent": 20.4
+      },
+      "busy_core1": {
+        "min_percent": 25.1,
+        "median_percent": 27.3,
+        "max_percent": 27.7
+      },
+      "spi_task": {
+        "min_percent": 25.0,
+        "median_percent": 27.2,
+        "max_percent": 27.6
+      },
+      "usb_task": {
+        "min_percent": 12.0,
+        "median_percent": 14.5,
+        "max_percent": 16.7
+      }
+    }
+  },
+  "note": "CPU estimates can attribute ISR time to interrupted tasks. WAV/host tests are separate requirements."
+}

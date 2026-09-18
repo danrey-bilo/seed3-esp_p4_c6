@@ -1,0 +1,33 @@
+{
+  "scope": "Separate diagnostic after the clean 301s duplex qualification; not part of its counters",
+  "seed_load": {
+    "source_local_log": "../v2-final-seed-load.log",
+    "p4_timestamp_ms": 1086791,
+    "sample_rate": 96000,
+    "busy_percent": 29.9,
+    "audio_callback_percent": 11.3,
+    "capture_overruns_before_print": 0,
+    "spi_errors": 0,
+    "usb_streams_active": false,
+    "note": "Audio callback and SPI continue at 96k. Blocking UART stats are intentionally requested only with USB streams closed."
+  },
+  "recovery": {
+    "source_local_log": "../v2-final-recovery.log",
+    "command": "spi pause 1200",
+    "command_p4_timestamp_ms": 1089914,
+    "seed_timeout_report_p4_timestamp_ms": 1090610,
+    "seed_audio_restart_p4_timestamp_ms": 1090723,
+    "confirmed_96000_p4_timestamp_ms": 1091779,
+    "seed_sessions_before": 8,
+    "seed_sessions_after": 10,
+    "spi_header_crc_sequence_format_errors": [0, 0, 0, 0],
+    "manual_buttons_used": false,
+    "note": "Two sessions: Seed restarted at 48k, then acknowledged the P4 96k request. Exact physical recovery latency is not inferred from buffered UART print times."
+  },
+  "restoration": {
+    "command": "seed reset",
+    "source_local_log": "../v2-after-recovery-clean-reset.log",
+    "manual_buttons_used": false,
+    "followup_test": "../qualification-v2-10ms-formats/summary.json"
+  }
+}

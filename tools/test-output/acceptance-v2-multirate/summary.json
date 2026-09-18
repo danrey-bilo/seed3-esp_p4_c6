@@ -1,0 +1,2201 @@
+{
+  "started": "2026-09-18T01:59:48+0200",
+  "completed": false,
+  "capture": "98ECB128-5FF7-497E-BAB8-347A0E6C749D",
+  "render": "81346F69-7DC4-4BA8-84A2-9D339F0C634C",
+  "period": "min",
+  "tests": [
+    {
+      "name": "01-48000-16-capture",
+      "rate": 48000,
+      "bits": 16,
+      "duplex": false,
+      "exit": 0,
+      "elapsed": 5.10899999999674,
+      "audio": {
+        "pass": true,
+        "frames": 240000,
+        "expected_frames": 240000,
+        "format": "PCM",
+        "rate": 48000,
+        "container_bits": 16,
+        "valid_bits": 16,
+        "rms": [
+          0.17759937072743404,
+          0.17759931773469106
+        ],
+        "min_separation_db": [
+          121.95079984642787,
+          122.32734223533727
+        ],
+        "max_silence_frames_after_50ms": [
+          1,
+          1
+        ],
+        "tail_silence_frames": [
+          0,
+          0
+        ],
+        "tail_rms": [
+          0.1776171190271903,
+          0.17761703029837114
+        ],
+        "nonfinite_samples": 0,
+        "padding_errors": 0,
+        "phase_suspect_samples_after_50ms": [
+          0,
+          0
+        ],
+        "max_recurrence_error_after_50ms": [
+          5.98334034994652e-05,
+          6.017512161654581e-05
+        ],
+        "per_second": [
+          {
+            "second": 1,
+            "rms": [
+              0.17752846284752136,
+              0.17752824814386645
+            ],
+            "separation_db": [
+              121.95079984642787,
+              126.7163116654853
+            ]
+          },
+          {
+            "second": 2,
+            "rms": [
+              0.1776170991486436,
+              0.17761704802515293
+            ],
+            "separation_db": [
+              122.00446423182207,
+              129.74054554111024
+            ]
+          },
+          {
+            "second": 3,
+            "rms": [
+              0.17761708382980249,
+              0.1776170866033033
+            ],
+            "separation_db": [
+              132.0653595489591,
+              129.1466624810501
+            ]
+          },
+          {
+            "second": 4,
+            "rms": [
+              0.17761707109171046,
+              0.17761715782964563
+            ],
+            "separation_db": [
+              125.9039311829018,
+              122.32734223533727
+            ]
+          },
+          {
+            "second": 5,
+            "rms": [
+              0.1776171190271903,
+              0.17761703029837114
+            ],
+            "separation_db": [
+              127.29378764734628,
+              122.46255851999749
+            ]
+          }
+        ]
+      },
+      "host": [
+        "capture_period default=10,000ms minimum=3,000ms requested=3,000ms",
+        "engine_buffer=144frames latency=3,000ms",
+        "captured=240000 target=240000 bytes=960000 elapsed=5,005s discontinuities=0 initial_discontinuities=0 timestamp_errors=0 silent_packets=0"
+      ]
+    },
+    {
+      "name": "02-48000-16-duplex",
+      "rate": 48000,
+      "bits": 16,
+      "duplex": true,
+      "exit": 0,
+      "elapsed": 5.140999999995984,
+      "audio": {
+        "pass": true,
+        "frames": 240000,
+        "expected_frames": 240000,
+        "format": "PCM",
+        "rate": 48000,
+        "container_bits": 16,
+        "valid_bits": 16,
+        "rms": [
+          0.17759960765526528,
+          0.17759936635629409
+        ],
+        "min_separation_db": [
+          122.0245889629768,
+          119.56525862114212
+        ],
+        "max_silence_frames_after_50ms": [
+          1,
+          1
+        ],
+        "tail_silence_frames": [
+          0,
+          0
+        ],
+        "tail_rms": [
+          0.17761706270948754,
+          0.1776171554548648
+        ],
+        "nonfinite_samples": 0,
+        "padding_errors": 0,
+        "phase_suspect_samples_after_50ms": [
+          0,
+          0
+        ],
+        "max_recurrence_error_after_50ms": [
+          6.014481788674253e-05,
+          5.9888803265656376e-05
+        ],
+        "per_second": [
+          {
+            "second": 1,
+            "rms": [
+              0.1775296733535463,
+              0.17752840660546743
+            ],
+            "separation_db": [
+              134.5076899806946,
+              122.33208091101757
+            ]
+          },
+          {
+            "second": 2,
+            "rms": [
+              0.17761704980966694,
+              0.17761716915173315
+            ],
+            "separation_db": [
+              122.80020531324256,
+              122.61535260321631
+            ]
+          },
+          {
+            "second": 3,
+            "rms": [
+              0.177617142496554,
+              0.17761705285489818
+            ],
+            "separation_db": [
+              122.0245889629768,
+              132.23956160218808
+            ]
+          },
+          {
+            "second": 4,
+            "rms": [
+              0.17761709269726003,
+              0.17761702999627307
+            ],
+            "separation_db": [
+              144.64168847628125,
+              119.56525862114212
+            ]
+          },
+          {
+            "second": 5,
+            "rms": [
+              0.17761706270948754,
+              0.1776171554548648
+            ],
+            "separation_db": [
+              125.35994707461676,
+              130.2371216207518
+            ]
+          }
+        ]
+      },
+      "host": [
+        "capture_period default=10,000ms minimum=3,000ms requested=3,000ms",
+        "engine_buffer=144frames latency=3,000ms",
+        "render_period default=10,000ms minimum=3,000ms requested=3,000ms",
+        "captured=240000 target=240000 bytes=960000 elapsed=5,039s discontinuities=0 initial_discontinuities=0 timestamp_errors=0 silent_packets=0"
+      ]
+    },
+    {
+      "name": "03-48000-24-capture",
+      "rate": 48000,
+      "bits": 24,
+      "duplex": false,
+      "exit": 0,
+      "elapsed": 5.140999999995984,
+      "audio": {
+        "pass": true,
+        "frames": 240000,
+        "expected_frames": 240000,
+        "format": "PCM",
+        "rate": 48000,
+        "container_bits": 32,
+        "valid_bits": 24,
+        "rms": [
+          0.1775991423626773,
+          0.17759941058549608
+        ],
+        "min_separation_db": [
+          140.52915879195086,
+          124.89852483950855
+        ],
+        "max_silence_frames_after_50ms": [
+          1,
+          1
+        ],
+        "tail_silence_frames": [
+          0,
+          0
+        ],
+        "tail_rms": [
+          0.17761716313918785,
+          0.1776171613620154
+        ],
+        "nonfinite_samples": 0,
+        "padding_errors": 0,
+        "phase_suspect_samples_after_50ms": [
+          0,
+          0
+        ],
+        "max_recurrence_error_after_50ms": [
+          2.830032717615616e-07,
+          3.137560754540303e-07
+        ],
+        "per_second": [
+          {
+            "second": 1,
+            "rms": [
+              0.17752704149535364,
+              0.1775283900815562
+            ],
+            "separation_db": [
+              140.52915879195086,
+              124.92300336118399
+            ]
+          },
+          {
+            "second": 2,
+            "rms": [
+              0.17761716325506946,
+              0.17761716103
+            ],
+            "separation_db": [
+              140.53363597947,
+              124.89852483950855
+            ]
+          },
+          {
+            "second": 3,
+            "rms": [
+              0.17761716275975586,
+              0.17761716134178226
+            ],
+            "separation_db": [
+              140.62810137069619,
+              124.93946382444364
+            ]
+          },
+          {
+            "second": 4,
+            "rms": [
+              0.17761716287111146,
+              0.1776171613633241
+            ],
+            "separation_db": [
+              140.72198216052175,
+              124.91015959218771
+            ]
+          },
+          {
+            "second": 5,
+            "rms": [
+              0.17761716313918785,
+              0.1776171613620154
+            ],
+            "separation_db": [
+              140.5629923736597,
+              124.94363308571465
+            ]
+          }
+        ]
+      },
+      "host": [
+        "capture_period default=10,000ms minimum=3,000ms requested=3,000ms",
+        "engine_buffer=144frames latency=3,000ms",
+        "captured=240000 target=240000 bytes=1920000 elapsed=5,022s discontinuities=0 initial_discontinuities=0 timestamp_errors=0 silent_packets=0"
+      ]
+    },
+    {
+      "name": "04-48000-24-duplex",
+      "rate": 48000,
+      "bits": 24,
+      "duplex": true,
+      "exit": 0,
+      "elapsed": 5.139999999999418,
+      "audio": {
+        "pass": true,
+        "frames": 240000,
+        "expected_frames": 240000,
+        "format": "PCM",
+        "rate": 48000,
+        "container_bits": 32,
+        "valid_bits": 24,
+        "rms": [
+          0.17759929083295603,
+          0.17759940772361443
+        ],
+        "min_separation_db": [
+          139.00614871333386,
+          127.20215029005841
+        ],
+        "max_silence_frames_after_50ms": [
+          1,
+          1
+        ],
+        "tail_silence_frames": [
+          0,
+          0
+        ],
+        "tail_rms": [
+          0.17761716766870964,
+          0.17761718017892072
+        ],
+        "nonfinite_samples": 0,
+        "padding_errors": 0,
+        "phase_suspect_samples_after_50ms": [
+          0,
+          0
+        ],
+        "max_recurrence_error_after_50ms": [
+          2.833558451764695e-07,
+          3.1743778926285326e-07
+        ],
+        "per_second": [
+          {
+            "second": 1,
+            "rms": [
+              0.17752776591517958,
+              0.17752829976727108
+            ],
+            "separation_db": [
+              139.24308490807263,
+              127.20215029005841
+            ]
+          },
+          {
+            "second": 2,
+            "rms": [
+              0.17761716745701966,
+              0.17761718040650387
+            ],
+            "separation_db": [
+              139.22197074720833,
+              127.21802076281736
+            ]
+          },
+          {
+            "second": 3,
+            "rms": [
+              0.17761716753028267,
+              0.1776171801318601
+            ],
+            "separation_db": [
+              139.15518882842792,
+              127.22163249962591
+            ]
+          },
+          {
+            "second": 4,
+            "rms": [
+              0.17761716759176613,
+              0.17761718034096993
+            ],
+            "separation_db": [
+              139.133449315913,
+              127.27076985736751
+            ]
+          },
+          {
+            "second": 5,
+            "rms": [
+              0.17761716766870964,
+              0.17761718017892072
+            ],
+            "separation_db": [
+              139.00614871333386,
+              127.25335446387183
+            ]
+          }
+        ]
+      },
+      "host": [
+        "capture_period default=10,000ms minimum=3,000ms requested=3,000ms",
+        "engine_buffer=144frames latency=3,000ms",
+        "render_period default=10,000ms minimum=3,000ms requested=3,000ms",
+        "captured=240000 target=240000 bytes=1920000 elapsed=5,045s discontinuities=0 initial_discontinuities=0 timestamp_errors=0 silent_packets=0"
+      ]
+    },
+    {
+      "name": "05-44100-16-capture",
+      "rate": 44100,
+      "bits": 16,
+      "duplex": false,
+      "exit": 0,
+      "elapsed": 5.093000000000757,
+      "audio": {
+        "pass": true,
+        "frames": 220500,
+        "expected_frames": 220500,
+        "format": "PCM",
+        "rate": 44100,
+        "container_bits": 16,
+        "valid_bits": 16,
+        "rms": [
+          0.17758422872065366,
+          0.17758160410252932
+        ],
+        "min_separation_db": [
+          116.7963586503369,
+          123.08901709600138
+        ],
+        "max_silence_frames_after_50ms": [
+          1,
+          1
+        ],
+        "tail_silence_frames": [
+          0,
+          0
+        ],
+        "tail_rms": [
+          0.1776170831337986,
+          0.1776170354090164
+        ],
+        "nonfinite_samples": 0,
+        "padding_errors": 0,
+        "phase_suspect_samples_after_50ms": [
+          12,
+          12
+        ],
+        "max_recurrence_error_after_50ms": [
+          0.15982460455185848,
+          0.29707720392297643
+        ],
+        "per_second": [
+          {
+            "second": 1,
+            "rms": [
+              0.17745269583971637,
+              0.17743957007500075
+            ],
+            "separation_db": [
+              121.03241054011423,
+              124.3174478591562
+            ]
+          },
+          {
+            "second": 2,
+            "rms": [
+              0.177617104132185,
+              0.1776171566531387
+            ],
+            "separation_db": [
+              118.0927073216121,
+              126.0537288857694
+            ]
+          },
+          {
+            "second": 3,
+            "rms": [
+              0.17761708841711804,
+              0.1776170920945927
+            ],
+            "separation_db": [
+              124.76395380094948,
+              123.91574079032733
+            ]
+          },
+          {
+            "second": 4,
+            "rms": [
+              0.1776171112019553,
+              0.17761709529367872
+            ],
+            "separation_db": [
+              116.7963586503369,
+              124.3142052831308
+            ]
+          },
+          {
+            "second": 5,
+            "rms": [
+              0.1776170831337986,
+              0.1776170354090164
+            ],
+            "separation_db": [
+              144.64672152256304,
+              123.08901709600138
+            ]
+          }
+        ]
+      },
+      "host": [
+        "capture_period default=10,000ms minimum=3,000ms requested=3,016ms",
+        "engine_buffer=133frames latency=3,016ms",
+        "captured=220500 target=220500 bytes=882000 elapsed=5,006s discontinuities=0 initial_discontinuities=0 timestamp_errors=0 silent_packets=0"
+      ]
+    },
+    {
+      "name": "06-44100-16-duplex",
+      "rate": 44100,
+      "bits": 16,
+      "duplex": true,
+      "exit": 0,
+      "elapsed": 5.125,
+      "audio": {
+        "pass": true,
+        "frames": 220500,
+        "expected_frames": 220500,
+        "format": "PCM",
+        "rate": 44100,
+        "container_bits": 16,
+        "valid_bits": 16,
+        "rms": [
+          0.17758121780836128,
+          0.17758114621848056
+        ],
+        "min_separation_db": [
+          116.21452736634436,
+          126.40863448413484
+        ],
+        "max_silence_frames_after_50ms": [
+          1,
+          1
+        ],
+        "tail_silence_frames": [
+          0,
+          0
+        ],
+        "tail_rms": [
+          0.17761708984800342,
+          0.17761707068838253
+        ],
+        "nonfinite_samples": 0,
+        "padding_errors": 0,
+        "phase_suspect_samples_after_50ms": [
+          0,
+          0
+        ],
+        "max_recurrence_error_after_50ms": [
+          5.959124877435995e-05,
+          5.9990833831929935e-05
+        ],
+        "per_second": [
+          {
+            "second": 1,
+            "rms": [
+              0.17743768122368433,
+              0.17743738289017244
+            ],
+            "separation_db": [
+              123.00865259347795,
+              127.29021122664092
+            ]
+          },
+          {
+            "second": 2,
+            "rms": [
+              0.17761708012150204,
+              0.17761702502660764
+            ],
+            "separation_db": [
+              120.4169184202455,
+              129.701743924379
+            ]
+          },
+          {
+            "second": 3,
+            "rms": [
+              0.17761706152884826,
+              0.17761707719160222
+            ],
+            "separation_db": [
+              118.90760135570473,
+              126.40863448413484
+            ]
+          },
+          {
+            "second": 4,
+            "rms": [
+              0.17761710382269197,
+              0.1776171025693223
+            ],
+            "separation_db": [
+              130.2498187670658,
+              126.75146837728045
+            ]
+          },
+          {
+            "second": 5,
+            "rms": [
+              0.17761708984800342,
+              0.17761707068838253
+            ],
+            "separation_db": [
+              116.21452736634436,
+              126.86791401223655
+            ]
+          }
+        ]
+      },
+      "host": [
+        "capture_period default=10,000ms minimum=3,000ms requested=3,016ms",
+        "engine_buffer=133frames latency=3,016ms",
+        "render_period default=10,000ms minimum=3,000ms requested=3,016ms",
+        "captured=220500 target=220500 bytes=882000 elapsed=5,026s discontinuities=0 initial_discontinuities=0 timestamp_errors=0 silent_packets=0"
+      ]
+    },
+    {
+      "name": "07-44100-24-capture",
+      "rate": 44100,
+      "bits": 24,
+      "duplex": false,
+      "exit": 0,
+      "elapsed": 5.110000000000582,
+      "audio": {
+        "pass": true,
+        "frames": 220500,
+        "expected_frames": 220500,
+        "format": "PCM",
+        "rate": 44100,
+        "container_bits": 32,
+        "valid_bits": 24,
+        "rms": [
+          0.17758168524869486,
+          0.1775821017317952
+        ],
+        "min_separation_db": [
+          126.4763638898534,
+          125.62414047364634
+        ],
+        "max_silence_frames_after_50ms": [
+          1,
+          0
+        ],
+        "tail_silence_frames": [
+          0,
+          0
+        ],
+        "tail_rms": [
+          0.17761713007776667,
+          0.17761715174705683
+        ],
+        "nonfinite_samples": 0,
+        "padding_errors": 0,
+        "phase_suspect_samples_after_50ms": [
+          12,
+          12
+        ],
+        "max_recurrence_error_after_50ms": [
+          0.1746756853179155,
+          0.25536639545107276
+        ],
+        "per_second": [
+          {
+            "second": 1,
+            "rms": [
+              0.17743983525512752,
+              0.17744183296145247
+            ],
+            "separation_db": [
+              126.4763638898534,
+              125.68038451299603
+            ]
+          },
+          {
+            "second": 2,
+            "rms": [
+              0.17761713006809135,
+              0.17761715152335886
+            ],
+            "separation_db": [
+              126.57482666567279,
+              125.64154216896537
+            ]
+          },
+          {
+            "second": 3,
+            "rms": [
+              0.17761713006599983,
+              0.17761715147652185
+            ],
+            "separation_db": [
+              126.48121421458694,
+              125.62414047364634
+            ]
+          },
+          {
+            "second": 4,
+            "rms": [
+              0.1776171299729132,
+              0.17761715171670034
+            ],
+            "separation_db": [
+              126.57899531781942,
+              125.69129260604586
+            ]
+          },
+          {
+            "second": 5,
+            "rms": [
+              0.17761713007776667,
+              0.17761715174705683
+            ],
+            "separation_db": [
+              126.49080702848507,
+              125.65819771491405
+            ]
+          }
+        ]
+      },
+      "host": [
+        "capture_period default=10,000ms minimum=3,000ms requested=3,016ms",
+        "engine_buffer=133frames latency=3,016ms",
+        "captured=220500 target=220500 bytes=1764000 elapsed=5,023s discontinuities=0 initial_discontinuities=0 timestamp_errors=0 silent_packets=0"
+      ]
+    },
+    {
+      "name": "08-44100-24-duplex",
+      "rate": 44100,
+      "bits": 24,
+      "duplex": true,
+      "exit": 0,
+      "elapsed": 5.155999999995402,
+      "audio": {
+        "pass": true,
+        "frames": 220500,
+        "expected_frames": 220500,
+        "format": "PCM",
+        "rate": 44100,
+        "container_bits": 32,
+        "valid_bits": 24,
+        "rms": [
+          0.17758069802072893,
+          0.17758007776093046
+        ],
+        "min_separation_db": [
+          70.4822619431491,
+          57.34363535367453
+        ],
+        "max_silence_frames_after_50ms": [
+          1,
+          0
+        ],
+        "tail_silence_frames": [
+          0,
+          0
+        ],
+        "tail_rms": [
+          0.17761713778620952,
+          0.1776171723262697
+        ],
+        "nonfinite_samples": 0,
+        "padding_errors": 0,
+        "phase_suspect_samples_after_50ms": [
+          2,
+          2
+        ],
+        "max_recurrence_error_after_50ms": [
+          0.022605521729958833,
+          0.2037896512483659
+        ],
+        "per_second": [
+          {
+            "second": 1,
+            "rms": [
+              0.1774371699137599,
+              0.17744338942737645
+            ],
+            "separation_db": [
+              124.57968863996213,
+              126.64366552835433
+            ]
+          },
+          {
+            "second": 2,
+            "rms": [
+              0.17761715374348197,
+              0.1776171613222047
+            ],
+            "separation_db": [
+              124.60272999961958,
+              126.68556015689397
+            ]
+          },
+          {
+            "second": 3,
+            "rms": [
+              0.17761715379295515,
+              0.17761716167303318
+            ],
+            "separation_db": [
+              124.54914867872544,
+              126.71692495832018
+            ]
+          },
+          {
+            "second": 4,
+            "rms": [
+              0.17761480236666063,
+              0.17760543801978482
+            ],
+            "separation_db": [
+              70.4822619431491,
+              57.34363535367453
+            ]
+          },
+          {
+            "second": 5,
+            "rms": [
+              0.17761713778620952,
+              0.1776171723262697
+            ],
+            "separation_db": [
+              125.81496208390213,
+              128.25051510940077
+            ]
+          }
+        ]
+      },
+      "host": [
+        "capture_period default=10,000ms minimum=3,000ms requested=3,016ms",
+        "engine_buffer=133frames latency=3,016ms",
+        "render_period default=10,000ms minimum=3,000ms requested=3,016ms",
+        "captured=220500 target=220500 bytes=1764000 elapsed=5,062s discontinuities=0 initial_discontinuities=0 timestamp_errors=0 silent_packets=0"
+      ]
+    },
+    {
+      "name": "09-96000-16-capture",
+      "rate": 96000,
+      "bits": 16,
+      "duplex": false,
+      "exit": 0,
+      "elapsed": 5.1560000000026776,
+      "audio": {
+        "pass": true,
+        "frames": 480000,
+        "expected_frames": 480000,
+        "format": "PCM",
+        "rate": 96000,
+        "container_bits": 16,
+        "valid_bits": 16,
+        "rms": [
+          0.17759639675024366,
+          0.17759902664761584
+        ],
+        "min_separation_db": [
+          72.48366206615988,
+          52.12925625957691
+        ],
+        "max_silence_frames_after_50ms": [
+          1,
+          1
+        ],
+        "tail_silence_frames": [
+          0,
+          0
+        ],
+        "tail_rms": [
+          0.17761721052228163,
+          0.17761702901758128
+        ],
+        "nonfinite_samples": 0,
+        "padding_errors": 0,
+        "phase_suspect_samples_after_50ms": [
+          2,
+          2
+        ],
+        "max_recurrence_error_after_50ms": [
+          0.060033242557566535,
+          0.09674357672591437
+        ],
+        "per_second": [
+          {
+            "second": 1,
+            "rms": [
+              0.17750467447932494,
+              0.1775265747306648
+            ],
+            "separation_db": [
+              111.9353258886664,
+              121.62253332409863
+            ]
+          },
+          {
+            "second": 2,
+            "rms": [
+              0.17761713870935203,
+              0.17761704086909963
+            ],
+            "separation_db": [
+              112.4999616961077,
+              119.78929964745232
+            ]
+          },
+          {
+            "second": 3,
+            "rms": [
+              0.17761711235091354,
+              0.17761703516572208
+            ],
+            "separation_db": [
+              111.59795371115652,
+              120.4864399933966
+            ]
+          },
+          {
+            "second": 4,
+            "rms": [
+              0.1776258179275972,
+              0.17761743498348184
+            ],
+            "separation_db": [
+              72.48366206615988,
+              52.12925625957691
+            ]
+          },
+          {
+            "second": 5,
+            "rms": [
+              0.17761721052228163,
+              0.17761702901758128
+            ],
+            "separation_db": [
+              110.9155558848807,
+              119.82681492480393
+            ]
+          }
+        ]
+      },
+      "host": [
+        "capture_period default=10,000ms minimum=3,000ms requested=3,000ms",
+        "engine_buffer=288frames latency=3,000ms",
+        "captured=480000 target=480000 bytes=1920000 elapsed=5,054s discontinuities=0 initial_discontinuities=0 timestamp_errors=0 silent_packets=0"
+      ]
+    },
+    {
+      "name": "10-96000-16-duplex",
+      "rate": 96000,
+      "bits": 16,
+      "duplex": true,
+      "exit": 0,
+      "elapsed": 5.139999999999418,
+      "audio": {
+        "pass": true,
+        "frames": 480000,
+        "expected_frames": 480000,
+        "format": "PCM",
+        "rate": 96000,
+        "container_bits": 16,
+        "valid_bits": 16,
+        "rms": [
+          0.17759901121464547,
+          0.17759927553350002
+        ],
+        "min_separation_db": [
+          111.40987982901201,
+          118.31807965819993
+        ],
+        "max_silence_frames_after_50ms": [
+          1,
+          1
+        ],
+        "tail_silence_frames": [
+          0,
+          0
+        ],
+        "tail_rms": [
+          0.17761708275662003,
+          0.17761705713438355
+        ],
+        "nonfinite_samples": 0,
+        "padding_errors": 0,
+        "phase_suspect_samples_after_50ms": [
+          0,
+          0
+        ],
+        "max_recurrence_error_after_50ms": [
+          6.0726175043823716e-05,
+          6.0329265463343607e-05
+        ],
+        "per_second": [
+          {
+            "second": 1,
+            "rms": [
+              0.1775267800618704,
+              0.17752814940648454
+            ],
+            "separation_db": [
+              112.0065169448747,
+              118.99399823573164
+            ]
+          },
+          {
+            "second": 2,
+            "rms": [
+              0.17761705674953765,
+              0.17761703036790122
+            ],
+            "separation_db": [
+              112.05315589564519,
+              119.20828440158053
+            ]
+          },
+          {
+            "second": 3,
+            "rms": [
+              0.1776170785606478,
+              0.17761707302055513
+            ],
+            "separation_db": [
+              112.63816268392986,
+              118.50234971155095
+            ]
+          },
+          {
+            "second": 4,
+            "rms": [
+              0.17761703958574276,
+              0.17761704993679284
+            ],
+            "separation_db": [
+              112.0207160303622,
+              118.31807965819993
+            ]
+          },
+          {
+            "second": 5,
+            "rms": [
+              0.17761708275662003,
+              0.17761705713438355
+            ],
+            "separation_db": [
+              111.40987982901201,
+              120.04290985592688
+            ]
+          }
+        ]
+      },
+      "host": [
+        "capture_period default=10,000ms minimum=3,000ms requested=3,000ms",
+        "engine_buffer=288frames latency=3,000ms",
+        "render_period default=10,000ms minimum=3,000ms requested=3,000ms",
+        "captured=480000 target=480000 bytes=1920000 elapsed=5,044s discontinuities=0 initial_discontinuities=0 timestamp_errors=0 silent_packets=0"
+      ]
+    },
+    {
+      "name": "11-96000-24-capture",
+      "rate": 96000,
+      "bits": 24,
+      "duplex": false,
+      "exit": 0,
+      "elapsed": 5.1560000000026776,
+      "audio": {
+        "pass": true,
+        "frames": 480000,
+        "expected_frames": 480000,
+        "format": "PCM",
+        "rate": 96000,
+        "container_bits": 32,
+        "valid_bits": 24,
+        "rms": [
+          0.1775995845765558,
+          0.17759939607375602
+        ],
+        "min_separation_db": [
+          109.881713761231,
+          117.70332108814333
+        ],
+        "max_silence_frames_after_50ms": [
+          1,
+          1
+        ],
+        "tail_silence_frames": [
+          0,
+          0
+        ],
+        "tail_rms": [
+          0.17761722567223198,
+          0.17761715149102208
+        ],
+        "nonfinite_samples": 0,
+        "padding_errors": 0,
+        "phase_suspect_samples_after_50ms": [
+          2,
+          2
+        ],
+        "max_recurrence_error_after_50ms": [
+          0.1314569528407526,
+          0.02550073560937427
+        ],
+        "per_second": [
+          {
+            "second": 1,
+            "rms": [
+              0.1775282083932429,
+              0.17752829149668342
+            ],
+            "separation_db": [
+              109.88381555687779,
+              117.72905336057735
+            ]
+          },
+          {
+            "second": 2,
+            "rms": [
+              0.17761730644963514,
+              0.17761716311449385
+            ],
+            "separation_db": [
+              109.881713761231,
+              117.70332108814333
+            ]
+          },
+          {
+            "second": 3,
+            "rms": [
+              0.1776179371637575,
+              0.17761720463321296
+            ],
+            "separation_db": [
+              110.74955696651857,
+              118.18114575311094
+            ]
+          },
+          {
+            "second": 4,
+            "rms": [
+              0.17761722727583462,
+              0.17761715184241328
+            ],
+            "separation_db": [
+              110.77535700384878,
+              118.18976822464396
+            ]
+          },
+          {
+            "second": 5,
+            "rms": [
+              0.17761722567223198,
+              0.17761715149102208
+            ],
+            "separation_db": [
+              110.79536472090625,
+              118.2131854225922
+            ]
+          }
+        ]
+      },
+      "host": [
+        "capture_period default=10,000ms minimum=3,000ms requested=3,000ms",
+        "engine_buffer=288frames latency=3,000ms",
+        "captured=480000 target=480000 bytes=3840000 elapsed=5,043s discontinuities=0 initial_discontinuities=0 timestamp_errors=0 silent_packets=0"
+      ]
+    },
+    {
+      "name": "12-96000-24-duplex",
+      "rate": 96000,
+      "bits": 24,
+      "duplex": true,
+      "exit": 0,
+      "elapsed": 5.188000000001921,
+      "audio": {
+        "pass": true,
+        "frames": 480000,
+        "expected_frames": 480000,
+        "format": "PCM",
+        "rate": 96000,
+        "container_bits": 32,
+        "valid_bits": 24,
+        "rms": [
+          0.17760022412377946,
+          0.17760026564311215
+        ],
+        "min_separation_db": [
+          73.40554240142033,
+          45.00100349629827
+        ],
+        "max_silence_frames_after_50ms": [
+          1,
+          1
+        ],
+        "tail_silence_frames": [
+          0,
+          0
+        ],
+        "tail_rms": [
+          0.17761707551771244,
+          0.17761716508844475
+        ],
+        "nonfinite_samples": 0,
+        "padding_errors": 0,
+        "phase_suspect_samples_after_50ms": [
+          6,
+          6
+        ],
+        "max_recurrence_error_after_50ms": [
+          0.03770663364250054,
+          0.3196960532597289
+        ],
+        "per_second": [
+          {
+            "second": 1,
+            "rms": [
+              0.17752923750142352,
+              0.17752896570238624
+            ],
+            "separation_db": [
+              73.40554240142033,
+              45.00100349629827
+            ]
+          },
+          {
+            "second": 2,
+            "rms": [
+              0.1776181066569651,
+              0.17761795361985114
+            ],
+            "separation_db": [
+              111.53375126691473,
+              117.4058020676128
+            ]
+          },
+          {
+            "second": 3,
+            "rms": [
+              0.17761960688474926,
+              0.17762006061563726
+            ],
+            "separation_db": [
+              113.22142875957242,
+              117.64595340288693
+            ]
+          },
+          {
+            "second": 4,
+            "rms": [
+              0.17761707631408077,
+              0.17761716528469326
+            ],
+            "separation_db": [
+              113.23541424977333,
+              117.62904912575074
+            ]
+          },
+          {
+            "second": 5,
+            "rms": [
+              0.17761707551771244,
+              0.17761716508844475
+            ],
+            "separation_db": [
+              113.25267890320048,
+              117.64628552653036
+            ]
+          }
+        ]
+      },
+      "host": [
+        "capture_period default=10,000ms minimum=3,000ms requested=3,000ms",
+        "engine_buffer=288frames latency=3,000ms",
+        "render_period default=10,000ms minimum=3,000ms requested=3,000ms",
+        "captured=480000 target=480000 bytes=3840000 elapsed=5,088s discontinuities=0 initial_discontinuities=0 timestamp_errors=0 silent_packets=0"
+      ]
+    },
+    {
+      "name": "13-88200-16-capture",
+      "rate": 88200,
+      "bits": 16,
+      "duplex": false,
+      "exit": 0,
+      "elapsed": 5.155999999995402,
+      "audio": {
+        "pass": true,
+        "frames": 441000,
+        "expected_frames": 441000,
+        "format": "PCM",
+        "rate": 88200,
+        "container_bits": 16,
+        "valid_bits": 16,
+        "rms": [
+          0.17758498568015707,
+          0.1775835982214183
+        ],
+        "min_separation_db": [
+          74.40110942854699,
+          67.38870148102325
+        ],
+        "max_silence_frames_after_50ms": [
+          1,
+          1
+        ],
+        "tail_silence_frames": [
+          0,
+          0
+        ],
+        "tail_rms": [
+          0.17761706368733401,
+          0.17761708095453552
+        ],
+        "nonfinite_samples": 0,
+        "padding_errors": 0,
+        "phase_suspect_samples_after_50ms": [
+          14,
+          14
+        ],
+        "max_recurrence_error_after_50ms": [
+          0.08153528035983582,
+          0.1259067017465446
+        ],
+        "per_second": [
+          {
+            "second": 1,
+            "rms": [
+              0.17745494152216354,
+              0.17744379520348166
+            ],
+            "separation_db": [
+              74.40110942854699,
+              67.38870148102325
+            ]
+          },
+          {
+            "second": 2,
+            "rms": [
+              0.177617045290029,
+              0.1776171143758048
+            ],
+            "separation_db": [
+              115.28514316083191,
+              112.18739666630273
+            ]
+          },
+          {
+            "second": 3,
+            "rms": [
+              0.1776187659261473,
+              0.17762286866454832
+            ],
+            "separation_db": [
+              114.42955817551322,
+              114.8520043253686
+            ]
+          },
+          {
+            "second": 4,
+            "rms": [
+              0.17761705246083576,
+              0.17761706306403768
+            ],
+            "separation_db": [
+              113.59440796382982,
+              114.09218133146248
+            ]
+          },
+          {
+            "second": 5,
+            "rms": [
+              0.17761706368733401,
+              0.17761708095453552
+            ],
+            "separation_db": [
+              113.47570327384703,
+              114.4470735436149
+            ]
+          }
+        ]
+      },
+      "host": [
+        "capture_period default=10,000ms minimum=3,000ms requested=3,005ms",
+        "engine_buffer=265frames latency=3,005ms",
+        "captured=441000 target=441000 bytes=1764000 elapsed=5,060s discontinuities=0 initial_discontinuities=0 timestamp_errors=0 silent_packets=0"
+      ]
+    },
+    {
+      "name": "14-88200-16-duplex",
+      "rate": 88200,
+      "bits": 16,
+      "duplex": true,
+      "exit": 0,
+      "elapsed": 5.1710000000020955,
+      "audio": {
+        "pass": true,
+        "frames": 441000,
+        "expected_frames": 441000,
+        "format": "PCM",
+        "rate": 88200,
+        "container_bits": 16,
+        "valid_bits": 16,
+        "rms": [
+          0.17758483732547622,
+          0.17757631404287524
+        ],
+        "min_separation_db": [
+          77.14220814342404,
+          65.5316007027248
+        ],
+        "max_silence_frames_after_50ms": [
+          1,
+          1
+        ],
+        "tail_silence_frames": [
+          0,
+          0
+        ],
+        "tail_rms": [
+          0.17761713462399692,
+          0.1776170660820416
+        ],
+        "nonfinite_samples": 0,
+        "padding_errors": 0,
+        "phase_suspect_samples_after_50ms": [
+          12,
+          12
+        ],
+        "max_recurrence_error_after_50ms": [
+          0.10576681990149231,
+          0.11118806639064044
+        ],
+        "per_second": [
+          {
+            "second": 1,
+            "rms": [
+              0.17745739567369806,
+              0.17741618188813926
+            ],
+            "separation_db": [
+              82.45974747711317,
+              75.31112877980436
+            ]
+          },
+          {
+            "second": 2,
+            "rms": [
+              0.17761532930382123,
+              0.17761411396347643
+            ],
+            "separation_db": [
+              77.14220814342404,
+              65.5316007027248
+            ]
+          },
+          {
+            "second": 3,
+            "rms": [
+              0.1776171431646009,
+              0.17761707141791477
+            ],
+            "separation_db": [
+              115.87568897347478,
+              114.83546027320095
+            ]
+          },
+          {
+            "second": 4,
+            "rms": [
+              0.17761712670401347,
+              0.17761704661378702
+            ],
+            "separation_db": [
+              115.75058219341658,
+              114.16163084563365
+            ]
+          },
+          {
+            "second": 5,
+            "rms": [
+              0.17761713462399692,
+              0.1776170660820416
+            ],
+            "separation_db": [
+              115.67903211457276,
+              114.97744664438102
+            ]
+          }
+        ]
+      },
+      "host": [
+        "capture_period default=10,000ms minimum=3,000ms requested=3,005ms",
+        "engine_buffer=265frames latency=3,005ms",
+        "render_period default=10,000ms minimum=3,000ms requested=3,005ms",
+        "captured=441000 target=441000 bytes=1764000 elapsed=5,076s discontinuities=0 initial_discontinuities=0 timestamp_errors=0 silent_packets=0"
+      ]
+    },
+    {
+      "name": "15-88200-24-capture",
+      "rate": 88200,
+      "bits": 24,
+      "duplex": false,
+      "exit": 0,
+      "elapsed": 5.296999999998661,
+      "audio": {
+        "pass": true,
+        "frames": 441000,
+        "expected_frames": 441000,
+        "format": "PCM",
+        "rate": 88200,
+        "container_bits": 32,
+        "valid_bits": 24,
+        "rms": [
+          0.17758001756389252,
+          0.1775791244013145
+        ],
+        "min_separation_db": [
+          60.30356401681723,
+          53.814310786706656
+        ],
+        "max_silence_frames_after_50ms": [
+          1,
+          1
+        ],
+        "tail_silence_frames": [
+          0,
+          0
+        ],
+        "tail_rms": [
+          0.17761161813087975,
+          0.17759887858596643
+        ],
+        "nonfinite_samples": 0,
+        "padding_errors": 0,
+        "phase_suspect_samples_after_50ms": [
+          20,
+          20
+        ],
+        "max_recurrence_error_after_50ms": [
+          0.156029582948713,
+          0.4848618468788918
+        ],
+        "per_second": [
+          {
+            "second": 1,
+            "rms": [
+              0.1774307475177096,
+              0.1774450594550169
+            ],
+            "separation_db": [
+              114.25166259019076,
+              112.79010007025272
+            ]
+          },
+          {
+            "second": 2,
+            "rms": [
+              0.1776229088331864,
+              0.1776171690832373
+            ],
+            "separation_db": [
+              75.41740713439525,
+              54.90491226977632
+            ]
+          },
+          {
+            "second": 3,
+            "rms": [
+              0.17761710768212882,
+              0.1776171812886174
+            ],
+            "separation_db": [
+              114.72991202248454,
+              113.36343762360507
+            ]
+          },
+          {
+            "second": 4,
+            "rms": [
+              0.17761762707105752,
+              0.1776172696376098
+            ],
+            "separation_db": [
+              114.77830516240456,
+              113.54158371897569
+            ]
+          },
+          {
+            "second": 5,
+            "rms": [
+              0.17761161813087975,
+              0.17759887858596643
+            ],
+            "separation_db": [
+              60.30356401681723,
+              53.814310786706656
+            ]
+          }
+        ]
+      },
+      "host": [
+        "capture_period default=10,000ms minimum=3,000ms requested=3,005ms",
+        "engine_buffer=265frames latency=3,005ms",
+        "captured=441000 target=441000 bytes=3528000 elapsed=5,190s discontinuities=0 initial_discontinuities=0 timestamp_errors=0 silent_packets=0"
+      ]
+    },
+    {
+      "name": "16-88200-24-duplex",
+      "rate": 88200,
+      "bits": 24,
+      "duplex": true,
+      "exit": 0,
+      "elapsed": 5.703000000001339,
+      "audio": {
+        "pass": true,
+        "frames": 441000,
+        "expected_frames": 441000,
+        "format": "PCM",
+        "rate": 88200,
+        "container_bits": 32,
+        "valid_bits": 24,
+        "rms": [
+          0.17759174378556164,
+          0.17758139327820638
+        ],
+        "min_separation_db": [
+          59.76395873863083,
+          50.67459201426807
+        ],
+        "max_silence_frames_after_50ms": [
+          1,
+          1
+        ],
+        "tail_silence_frames": [
+          0,
+          0
+        ],
+        "tail_rms": [
+          0.17761712283878378,
+          0.1776171287106555
+        ],
+        "nonfinite_samples": 0,
+        "padding_errors": 0,
+        "phase_suspect_samples_after_50ms": [
+          8,
+          8
+        ],
+        "max_recurrence_error_after_50ms": [
+          0.08288475402491602,
+          0.2244074524689455
+        ],
+        "per_second": [
+          {
+            "second": 1,
+            "rms": [
+              0.1774616878010085,
+              0.17743756766124705
+            ],
+            "separation_db": [
+              116.22531383023122,
+              114.53040317468124
+            ]
+          },
+          {
+            "second": 2,
+            "rms": [
+              0.1776161032228366,
+              0.17761607009843922
+            ],
+            "separation_db": [
+              115.53804334455933,
+              115.17847132194824
+            ]
+          },
+          {
+            "second": 3,
+            "rms": [
+              0.17763610766719193,
+              0.177619327910719
+            ],
+            "separation_db": [
+              59.76395873863083,
+              62.2991159178305
+            ]
+          },
+          {
+            "second": 4,
+            "rms": [
+              0.1776276371231113,
+              0.17761679920378692
+            ],
+            "separation_db": [
+              66.99561689615629,
+              50.67459201426807
+            ]
+          },
+          {
+            "second": 5,
+            "rms": [
+              0.17761712283878378,
+              0.1776171287106555
+            ],
+            "separation_db": [
+              115.03031091368692,
+              114.87558299417314
+            ]
+          }
+        ]
+      },
+      "host": [
+        "capture_period default=10,000ms minimum=3,000ms requested=3,005ms",
+        "engine_buffer=265frames latency=3,005ms",
+        "render_period default=10,000ms minimum=3,000ms requested=3,005ms",
+        "captured=441000 target=441000 bytes=3528000 elapsed=5,617s discontinuities=0 initial_discontinuities=0 timestamp_errors=0 silent_packets=0"
+      ]
+    },
+    {
+      "name": "17-48000-16-capture",
+      "rate": 48000,
+      "bits": 16,
+      "duplex": false,
+      "exit": 0,
+      "elapsed": 5.125,
+      "audio": {
+        "pass": true,
+        "frames": 240000,
+        "expected_frames": 240000,
+        "format": "PCM",
+        "rate": 48000,
+        "container_bits": 16,
+        "valid_bits": 16,
+        "rms": [
+          0.1775995180970415,
+          0.17759931885699545
+        ],
+        "min_separation_db": [
+          120.5676335489059,
+          120.85158231400415
+        ],
+        "max_silence_frames_after_50ms": [
+          1,
+          1
+        ],
+        "tail_silence_frames": [
+          0,
+          0
+        ],
+        "tail_rms": [
+          0.17761707066568183,
+          0.17761706788524412
+        ],
+        "nonfinite_samples": 0,
+        "padding_errors": 0,
+        "phase_suspect_samples_after_50ms": [
+          2,
+          2
+        ],
+        "max_recurrence_error_after_50ms": [
+          0.022275919541730638,
+          0.21583470479931638
+        ],
+        "per_second": [
+          {
+            "second": 1,
+            "rms": [
+              0.17752836294539,
+              0.17752837806182625
+            ],
+            "separation_db": [
+              123.73940353392847,
+              120.85158231400415
+            ]
+          },
+          {
+            "second": 2,
+            "rms": [
+              0.17761796719830922,
+              0.1776168581071395
+            ],
+            "separation_db": [
+              123.07903845565939,
+              124.08025774592376
+            ]
+          },
+          {
+            "second": 3,
+            "rms": [
+              0.1776170718972323,
+              0.177617172097938
+            ],
+            "separation_db": [
+              136.59267768836077,
+              144.6107897016194
+            ]
+          },
+          {
+            "second": 4,
+            "rms": [
+              0.17761709996104733,
+              0.17761710042394374
+            ],
+            "separation_db": [
+              126.24441553378497,
+              129.27029126537514
+            ]
+          },
+          {
+            "second": 5,
+            "rms": [
+              0.17761707066568183,
+              0.17761706788524412
+            ],
+            "separation_db": [
+              120.5676335489059,
+              123.89223552115922
+            ]
+          }
+        ]
+      },
+      "host": [
+        "capture_period default=10,000ms minimum=3,000ms requested=3,000ms",
+        "engine_buffer=144frames latency=3,000ms",
+        "captured=240000 target=240000 bytes=960000 elapsed=5,027s discontinuities=0 initial_discontinuities=0 timestamp_errors=0 silent_packets=0"
+      ]
+    },
+    {
+      "name": "18-48000-16-duplex",
+      "rate": 48000,
+      "bits": 16,
+      "duplex": true,
+      "exit": 0,
+      "elapsed": 5.110000000000582,
+      "audio": {
+        "pass": true,
+        "frames": 240000,
+        "expected_frames": 240000,
+        "format": "PCM",
+        "rate": 48000,
+        "container_bits": 16,
+        "valid_bits": 16,
+        "rms": [
+          0.1775992829241331,
+          0.17759930868852136
+        ],
+        "min_separation_db": [
+          122.63741288004508,
+          120.66728823209291
+        ],
+        "max_silence_frames_after_50ms": [
+          1,
+          1
+        ],
+        "tail_silence_frames": [
+          0,
+          0
+        ],
+        "tail_rms": [
+          0.17761705791306018,
+          0.1776170246288571
+        ],
+        "nonfinite_samples": 0,
+        "padding_errors": 0,
+        "phase_suspect_samples_after_50ms": [
+          0,
+          0
+        ],
+        "max_recurrence_error_after_50ms": [
+          6.014481788674253e-05,
+          6.0270935841655326e-05
+        ],
+        "per_second": [
+          {
+            "second": 1,
+            "rms": [
+              0.17752805841692978,
+              0.1775282230007355
+            ],
+            "separation_db": [
+              133.81007610828678,
+              120.66728823209291
+            ]
+          },
+          {
+            "second": 2,
+            "rms": [
+              0.17761705620217272,
+              0.1776170385081632
+            ],
+            "separation_db": [
+              129.34318148601045,
+              121.26679368152624
+            ]
+          },
+          {
+            "second": 3,
+            "rms": [
+              0.17761712337186192,
+              0.17761707179132594
+            ],
+            "separation_db": [
+              122.63741288004508,
+              120.95870102644272
+            ]
+          },
+          {
+            "second": 4,
+            "rms": [
+              0.17761710086597568,
+              0.1776171677323485
+            ],
+            "separation_db": [
+              128.719656243063,
+              128.35121768690266
+            ]
+          },
+          {
+            "second": 5,
+            "rms": [
+              0.17761705791306018,
+              0.1776170246288571
+            ],
+            "separation_db": [
+              127.25449068732678,
+              125.26521454577372
+            ]
+          }
+        ]
+      },
+      "host": [
+        "capture_period default=10,000ms minimum=3,000ms requested=3,000ms",
+        "engine_buffer=144frames latency=3,000ms",
+        "render_period default=10,000ms minimum=3,000ms requested=3,000ms",
+        "captured=240000 target=240000 bytes=960000 elapsed=5,027s discontinuities=0 initial_discontinuities=0 timestamp_errors=0 silent_packets=0"
+      ]
+    },
+    {
+      "name": "19-48000-24-capture",
+      "rate": 48000,
+      "bits": 24,
+      "duplex": false,
+      "exit": 0,
+      "elapsed": 5.10899999999674,
+      "audio": {
+        "pass": true,
+        "frames": 240000,
+        "expected_frames": 240000,
+        "format": "PCM",
+        "rate": 48000,
+        "container_bits": 32,
+        "valid_bits": 24,
+        "rms": [
+          0.17759936656574574,
+          0.1775993942306176
+        ],
+        "min_separation_db": [
+          139.30126596002657,
+          124.99542978687445
+        ],
+        "max_silence_frames_after_50ms": [
+          1,
+          1
+        ],
+        "tail_silence_frames": [
+          0,
+          0
+        ],
+        "tail_rms": [
+          0.17761716605455657,
+          0.17761716204604935
+        ],
+        "nonfinite_samples": 0,
+        "padding_errors": 0,
+        "phase_suspect_samples_after_50ms": [
+          0,
+          0
+        ],
+        "max_recurrence_error_after_50ms": [
+          2.830032717615616e-07,
+          3.1949231166228387e-07
+        ],
+        "per_second": [
+          {
+            "second": 1,
+            "rms": [
+              0.1775281502574298,
+              0.17752830509907994
+            ],
+            "separation_db": [
+              139.30126596002657,
+              125.00384785447204
+            ]
+          },
+          {
+            "second": 2,
+            "rms": [
+              0.1776171665267934,
+              0.1776171618784719
+            ],
+            "separation_db": [
+              139.57082656630266,
+              124.99542978687445
+            ]
+          },
+          {
+            "second": 3,
+            "rms": [
+              0.17761716613464945,
+              0.1776171619738676
+            ],
+            "separation_db": [
+              139.421048975902,
+              125.00543111331217
+            ]
+          },
+          {
+            "second": 4,
+            "rms": [
+              0.17761716600848257,
+              0.17761716237247957
+            ],
+            "separation_db": [
+              139.46255751523296,
+              125.02146742023187
+            ]
+          },
+          {
+            "second": 5,
+            "rms": [
+              0.17761716605455657,
+              0.17761716204604935
+            ],
+            "separation_db": [
+              139.65902654454806,
+              125.02617635604292
+            ]
+          }
+        ]
+      },
+      "host": [
+        "capture_period default=10,000ms minimum=3,000ms requested=3,000ms",
+        "engine_buffer=144frames latency=3,000ms",
+        "captured=240000 target=240000 bytes=1920000 elapsed=5,009s discontinuities=0 initial_discontinuities=0 timestamp_errors=0 silent_packets=0"
+      ]
+    },
+    {
+      "name": "20-48000-24-duplex",
+      "rate": 48000,
+      "bits": 24,
+      "duplex": true,
+      "exit": 0,
+      "elapsed": 5.1560000000026776,
+      "audio": {
+        "pass": false,
+        "frames": 240000,
+        "expected_frames": 240000,
+        "format": "PCM",
+        "rate": 48000,
+        "container_bits": 32,
+        "valid_bits": 24,
+        "rms": [
+          0.17759865633350252,
+          0.17759921774095225
+        ],
+        "min_separation_db": [
+          84.04313856985716,
+          37.98673997299227
+        ],
+        "max_silence_frames_after_50ms": [
+          1,
+          1
+        ],
+        "tail_silence_frames": [
+          0,
+          0
+        ],
+        "tail_rms": [
+          0.17761716237192826,
+          0.17761718346114513
+        ],
+        "nonfinite_samples": 0,
+        "padding_errors": 0,
+        "phase_suspect_samples_after_50ms": [
+          2,
+          2
+        ],
+        "max_recurrence_error_after_50ms": [
+          0.03977357145495561,
+          0.5017387357498895
+        ],
+        "per_second": [
+          {
+            "second": 1,
+            "rms": [
+              0.17752714333141711,
+              0.1775283926622099
+            ],
+            "separation_db": [
+              141.54338987870514,
+              127.76831291705768
+            ]
+          },
+          {
+            "second": 2,
+            "rms": [
+              0.17761716106266387,
+              0.17761718369816568
+            ],
+            "separation_db": [
+              141.53782718875897,
+              127.74464677483225
+            ]
+          },
+          {
+            "second": 3,
+            "rms": [
+              0.17761463447270107,
+              0.1776161281957262
+            ],
+            "separation_db": [
+              84.04313856985716,
+              37.98673997299227
+            ]
+          },
+          {
+            "second": 4,
+            "rms": [
+              0.17761716241943176,
+              0.1776171830338642
+            ],
+            "separation_db": [
+              140.9677921683383,
+              127.73037514931744
+            ]
+          },
+          {
+            "second": 5,
+            "rms": [
+              0.17761716237192826,
+              0.17761718346114513
+            ],
+            "separation_db": [
+              140.88662540360093,
+              127.69646480146882
+            ]
+          }
+        ]
+      },
+      "host": [
+        "capture_period default=10,000ms minimum=3,000ms requested=3,000ms",
+        "engine_buffer=144frames latency=3,000ms",
+        "render_period default=10,000ms minimum=3,000ms requested=3,000ms",
+        "captured=240000 target=240000 bytes=1920000 elapsed=5,050s discontinuities=0 initial_discontinuities=0 timestamp_errors=0 silent_packets=0"
+      ]
+    }
+  ],
+  "failure": "20-48000-24-duplex: waveform acceptance failed",
+  "finished": "2026-09-18T02:01:37+0200"
+}

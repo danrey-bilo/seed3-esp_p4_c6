@@ -1,0 +1,57 @@
+{
+  "rate": 48000,
+  "frames": 2880000,
+  "events": [
+    {
+      "frame": 193920,
+      "offset_frames": 480,
+      "fit_rms": 3.226137070736784e-06,
+      "offset_ms": 10.0
+    },
+    {
+      "frame": 716640,
+      "offset_frames": 480,
+      "fit_rms": 2.81371943704149e-06,
+      "offset_ms": 10.0
+    },
+    {
+      "frame": 1370400,
+      "offset_frames": 960,
+      "fit_rms": 6.025948794996177e-06,
+      "offset_ms": 20.0
+    },
+    {
+      "frame": 1631040,
+      "offset_frames": 480,
+      "fit_rms": 2.7231199945640694e-06,
+      "offset_ms": 10.0
+    },
+    {
+      "frame": 1892160,
+      "offset_frames": 960,
+      "fit_rms": 5.345406532721315e-06,
+      "offset_ms": 20.0
+    },
+    {
+      "frame": 2414880,
+      "offset_frames": 960,
+      "fit_rms": 3.5403224269722926e-06,
+      "offset_ms": 20.0
+    },
+    {
+      "frame": 2675040,
+      "offset_frames": 960,
+      "fit_rms": 1.870081188627509e-06,
+      "offset_ms": 20.0
+    },
+    {
+      "frame": 2870880,
+      "offset_frames": 480,
+      "fit_rms": 2.423233883495663e-06,
+      "offset_ms": 10.0
+    }
+  ],
+  "all_events_fit_known_tones": true,
+  "max_abs_inferred_offset_ms": 20.0,
+  "note": "Inference over +/-50ms, excluding first 50ms; not an independent continuity guarantee."
+}

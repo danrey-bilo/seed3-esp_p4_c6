@@ -1,0 +1,141 @@
+{
+  "rate": 96000,
+  "frames": 28896000,
+  "events": [
+    {
+      "frame": 140160,
+      "offset_frames": -3124,
+      "fit_rms": 0.004421031152305484,
+      "offset_ms": -32.541666666666664
+    },
+    {
+      "frame": 276480,
+      "offset_frames": 1798,
+      "fit_rms": 0.001297652154332924,
+      "offset_ms": 18.729166666666668
+    },
+    {
+      "frame": 2097600,
+      "offset_frames": 960,
+      "fit_rms": 3.3399182308746143e-06,
+      "offset_ms": 10.0
+    },
+    {
+      "frame": 6153600,
+      "offset_frames": 960,
+      "fit_rms": 1.4798281032910745e-05,
+      "offset_ms": 10.0
+    },
+    {
+      "frame": 7591680,
+      "offset_frames": 960,
+      "fit_rms": 1.507903015392407e-05,
+      "offset_ms": 10.0
+    },
+    {
+      "frame": 9292800,
+      "offset_frames": 960,
+      "fit_rms": 3.7429414649364354e-06,
+      "offset_ms": 10.0
+    },
+    {
+      "frame": 10730880,
+      "offset_frames": 960,
+      "fit_rms": 3.1541852056623393e-06,
+      "offset_ms": 10.0
+    },
+    {
+      "frame": 12561600,
+      "offset_frames": 960,
+      "fit_rms": 1.4749953328255148e-05,
+      "offset_ms": 10.0
+    },
+    {
+      "frame": 13083840,
+      "offset_frames": 960,
+      "fit_rms": 1.1866626817307653e-05,
+      "offset_ms": 10.0
+    },
+    {
+      "frame": 17926080,
+      "offset_frames": 960,
+      "fit_rms": 5.858071375652536e-06,
+      "offset_ms": 10.0
+    },
+    {
+      "frame": 19102080,
+      "offset_frames": 960,
+      "fit_rms": 1.3248473104300064e-05,
+      "offset_ms": 10.0
+    },
+    {
+      "frame": 19624320,
+      "offset_frames": 960,
+      "fit_rms": 1.5799369447359995e-05,
+      "offset_ms": 10.0
+    },
+    {
+      "frame": 23549760,
+      "offset_frames": 960,
+      "fit_rms": 4.9755748422266654e-06,
+      "offset_ms": 10.0
+    },
+    {
+      "frame": 24595200,
+      "offset_frames": 960,
+      "fit_rms": 1.3778695113033508e-05,
+      "offset_ms": 10.0
+    },
+    {
+      "frame": 25641600,
+      "offset_frames": 960,
+      "fit_rms": 7.030264111170725e-06,
+      "offset_ms": 10.0
+    },
+    {
+      "frame": 26163840,
+      "offset_frames": 960,
+      "fit_rms": 1.5254803203051909e-05,
+      "offset_ms": 10.0
+    },
+    {
+      "frame": 26555520,
+      "offset_frames": 960,
+      "fit_rms": 5.840220591529434e-06,
+      "offset_ms": 10.0
+    },
+    {
+      "frame": 26685120,
+      "offset_frames": 960,
+      "fit_rms": 1.3037148751713195e-05,
+      "offset_ms": 10.0
+    },
+    {
+      "frame": 27077760,
+      "offset_frames": 960,
+      "fit_rms": 5.461751036595779e-06,
+      "offset_ms": 10.0
+    },
+    {
+      "frame": 27599040,
+      "offset_frames": 960,
+      "fit_rms": 1.5356773885892076e-05,
+      "offset_ms": 10.0
+    },
+    {
+      "frame": 28122240,
+      "offset_frames": 960,
+      "fit_rms": 1.4086412589979768e-05,
+      "offset_ms": 10.0
+    },
+    {
+      "frame": 28644480,
+      "offset_frames": 960,
+      "fit_rms": 6.779786923554942e-06,
+      "offset_ms": 10.0
+    }
+  ],
+  "all_events_fit_known_tones": false,
+  "max_abs_inferred_offset_ms": 32.541666666666664,
+  "note": "Inference over +/-50ms, excluding first 50ms; not an independent continuity guarantee."
+}

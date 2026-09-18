@@ -1,0 +1,15 @@
+{
+  "rate": 48000,
+  "frames": 2880000,
+  "events": [
+    {
+      "frame": 674640,
+      "offset_frames": 288,
+      "fit_rms": 3.2060921658544993e-07,
+      "offset_ms": 6.0
+    }
+  ],
+  "all_events_fit_known_tones": true,
+  "max_abs_inferred_offset_ms": 6.0,
+  "note": "Inference over +/-50ms, excluding first 50ms; not an independent continuity guarantee."
+}
