@@ -1,0 +1,51 @@
+{
+  "format": "seedfx-effect",
+  "version": 1,
+  "package_id": "0x0001002A",
+  "id": "builtin.mixer",
+  "name": "Mixer",
+  "processor": "builtin:mixer",
+  "effect_type": 42,
+  "category": "routing",
+  "audio_ports": {
+    "inputs": 2,
+    "outputs": 1
+  },
+  "color": "#FFCE68",
+  "shape": "rounded",
+  "cpu_percent": {
+    "44100": 0.06,
+    "48000": 0.06,
+    "88200": 0.1,
+    "96000": 0.11
+  },
+  "parameters": [
+    {
+      "id": "level_a",
+      "name": "Branch A",
+      "unit": "%",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.5
+    },
+    {
+      "id": "level_b",
+      "name": "Branch B",
+      "unit": "%",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.5
+    },
+    {
+      "id": "master",
+      "name": "Master",
+      "unit": "%",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 1
+    }
+  ]
+}

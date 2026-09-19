@@ -1,0 +1,33 @@
+{
+  "format": "seedfx-effect",
+  "version": 1,
+  "package_id": "0x00010023",
+  "id": "builtin.dc_blocker",
+  "name": "DC Blocker",
+  "processor": "builtin:dc_blocker",
+  "effect_type": 35,
+  "category": "utility",
+  "audio_ports": {
+    "inputs": 2,
+    "outputs": 2
+  },
+  "color": "#65A8A3",
+  "shape": "rounded",
+  "cpu_percent": {
+    "44100": 0.18,
+    "48000": 0.2,
+    "88200": 0.34,
+    "96000": 0.37
+  },
+  "parameters": [
+    {
+      "id": "cutoff",
+      "name": "Cutoff",
+      "unit": "Hz",
+      "min": 2,
+      "max": 40,
+      "step": 1,
+      "default": 12
+    }
+  ]
+}

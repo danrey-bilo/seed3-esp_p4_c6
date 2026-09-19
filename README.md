@@ -1,249 +1,249 @@
 <p align="center">
-  <img src="docs/assets/audio-overview.svg" alt="Seed3 → SPI → ESP32-P4 → Windows: USB-аудио 2×2, 24 бит, 44,1–96 кГц" width="100%">
+  <img src="docs/assets/audio-overview-en.svg" alt="Seed3 / P4 Audio — stereo USB audio and a touch pedalboard" width="100%">
 </p>
 
 <p align="center">
-  <strong>Двухканальная USB-звуковая карта на Daisy Seed3 и ESP32-P4</strong><br>
-  АЦП и ЦАП Seed3 · USB High Speed · штатный драйвер Windows
+  <strong>A two-board audio interface with a touch-controlled pedalboard</strong><br>
+  Daisy Seed3 DSP · ESP32-P4 display & USB High Speed · Native Windows UAC2
 </p>
 
 <p align="center">
-  <a href="#подключение">Подключение</a> ·
-  <a href="#экран-p4">Экран P4</a> ·
-  <a href="#быстрый-старт">Быстрый старт</a> ·
-  <a href="FLASHING_RU.md">Прошивка</a> ·
-  <a href="docs/PCM24_ONLY_RU.md">Настройка и тесты</a> ·
-  <a href="ESP32-P4-WIFI6-Touch-LCD-7B/components/p4_uac2_stream/README_RU.md">Библиотека</a>
+  <a href="#pedalboard">Pedalboard</a> ·
+  <a href="#wiring">Wiring</a> ·
+  <a href="#quick-start">Quick start</a> ·
+  <a href="docs/PEDALBOARD_GUIDE.md">User guide</a> ·
+  <a href="README_RU.md">Русский</a>
 </p>
 
-## Что умеет проект
+## At a glance
 
-Текущий профиль **v0.2.1** — одновременная запись и воспроизведение **2×2**.
-Seed3 обрабатывает аналоговый звук и задаёт аудиочасы; P4 переносит аудио
-между SPI и USB. Частоту выбирает приложение на ПК или настройки Windows.
+Seed3 owns the ADC, DAC and audio clock. P4 handles USB, the 1024×600 touch
+display and microSD. Local processing keeps running without a PC.
 
-| Параметр | Рабочий профиль |
+| Feature | Current implementation |
 | :--- | :--- |
-| Каналы | 2 capture + 2 playback, full-duplex |
-| Частоты | **44,1 · 48 · 88,2 · 96 кГц** |
-| Формат USB | **24 бита, 3 байта на отсчёт**, signed PCM little-endian |
-| Подключение к ПК | USB Audio Class 2.0, High Speed, `usbaudio2.sys` |
-| Обмен между платами | SPI mode 0, **20 МГц**, READY + CRC + sequence |
-| Режимы SPI | **BALANCED** · **LOW LATENCY** · автоматический **LOCAL** |
-| Экран P4 | LVGL 9.5, 1024×600: CPU, IN/OUT, педалборд, LOCAL/WINDOWS |
-| Рабочие платы | Daisy Seed3 + ESP32-P4-WIFI6-Touch-LCD-7B, **P4 rev1.x** |
-| Среда сборки | ESP-IDF **5.5.5**, DaisyToolchain + libDaisy |
+| USB audio | 2 capture + 2 playback, full duplex, UAC2 High Speed |
+| Formats | **24-bit packed PCM**, 44.1 / 48 / 88.2 / 96 kHz |
+| Windows driver | Built-in `usbaudio2.sys` |
+| Inter-board audio | SPI mode 0, **20 MHz**, READY handshake, CRC and sequence checks |
+| Pedalboard | 12 active nodes, independent mono paths, Splitter and Mixer |
+| Effect catalog | 40 DSP effects + 2 routing utilities; up to 4 controls per profile |
+| Display | LVGL 9.5, direct socket patching, knobs, live ADC/DAC meters |
+| Hardware | Daisy Seed3 + ESP32-P4-WIFI6-Touch-LCD-7B, **P4 rev1.x** |
+| Toolchains | ESP-IDF **5.5.5**, DaisyToolchain + libDaisy |
 
-В готовом образе запись идёт с **АЦП L/R**, не с генератора синусов.
-USB-поток упакован в 24 бита; внутри SPI и API используются `int32_t`
-с 24 значащими старшими битами. Это сохраняет проверенный протокол между платами.
+USB uses three bytes per sample. SPI and the component API retain the tested
+`int32_t` representation with 24 valid left-aligned bits. The current profile
+does **not** advertise 192 kHz.
 
-## Подключение
+## Pedalboard
+
+![The actual LVGL interface rendered on the host, with an example parallel graph and simulated meter values](docs/assets/pedalboard-routing.png)
+
+*Native LVGL test render — example graph and simulated meter values, not a photo.*
+
+- **Tap a socket, then a free opposite-direction socket** to connect.
+  Start from either end; the selected pedal and socket light up.
+- **Tap a connected socket, then empty board space** to unplug its wire.
+- An occupied second socket cancels the action. Internal wires have distinct
+  colors; **IN1/OUT1 stay green, IN2/OUT2 stay blue**. Parallel tracks do not
+  overlap; dense boards can scroll vertically.
+  Use **Splitter** for branches and **Mixer** to combine them.
+- Tap the large **top LED** to toggle a pedal; tap its body for rotary controls.
+  Tap **Done** or outside the editor to close it.
+- Hold empty space, choose a **category**, then an effect; uncategorized effects are in **Other**.
+- Hold a pedal for **1 second, then move outside its body** to reposition it.
+  Hold **2 seconds inside its body** for replace, delete or information.
+  Finger movement within the card does not start a drag.
+- Cabinet cards are twice as wide as a standard pedal. No instance numbers or separate bypass buttons.
+- Hold **AUDIO SETTINGS** for the shared sample rate and channel switches.
+  Disabled physical channels disappear from the board.
+- Vertical meters beside the physical sockets show **Seed3 ADC input and final
+  DAC output**, including local operation with no USB stream.
+
+![Direct patching: select, connect, or unplug on empty space](docs/assets/pedalboard-gestures.svg)
+
+**[Read the illustrated guide →](docs/PEDALBOARD_GUIDE.md)** ·
+[Русская инструкция](docs/SEEDFX_ROUTING_RU.md)
+
+## Wi-Fi settings
+
+Open **SETTINGS → WI-FI** to scan 2.4 GHz networks and enter a password on the
+touch keyboard. Reopening the page shows connection status and the assigned IP.
+You can disconnect, select another network and enable **Reconnect automatically**.
+Credentials are saved on the device, never in this repository.
+
+![Wi-Fi connected view with a simulated test network](docs/assets/wifi-settings.png)
+
+*Native LVGL render with simulated network data.*
+[Network setup and limitations](docs/WIFI_SETTINGS.md)
+
+The routing graph is applied between audio blocks. Disconnected branches are
+not processed. Current screen edits live in RAM; restarting reloads
+`AUTORUN.SFG`. Saving a preset from the touchscreen is not implemented yet.
+
+## Wiring
 
 > [!WARNING]
-> **Сначала проверьте питание.** Земля плат должна быть общей; линии 3V3
-> между платами не соединяются. USB-A J1 на P4 подключается к ПК только через
-> проверенный data-only адаптер с физическим разрывом VBUS.
-> Обычный кабель USB-A ↔ USB-A подключать нельзя.
+> **Check power before connecting the boards.** Use a common ground, but do not
+> connect the boards' 3V3 rails. Connect P4 **USB-A J1** to the PC only through
+> the verified data-only adapter with **VBUS physically disconnected**.
+> Never use an ordinary USB-A to USB-A cable.
 
-![Соединения SPI, READY, UART и общей земли между Seed3 и ESP32-P4](docs/assets/spi-wiring.svg)
+![SPI, READY and UART signal map between Seed3 and P4](docs/assets/spi-wiring-en.svg)
 
-Это карта **сигналов**, а не расположение контактов на разъёмах.
-Обозначения `D…` относятся к Seed3, `GPIO…` — к P4.
+This is a **signal map**, not a physical connector layout.
 
-| Сигнал | Seed3 | ESP32-P4 | Направление |
+| Signal | Daisy Seed3 | ESP32-P4 | Direction |
 | :--- | :--- | :--- | :--- |
-| SCLK | D8 | GPIO2 | P4 → Seed |
-| MOSI · воспроизведение | D10 | GPIO3 | P4 → Seed |
-| MISO · запись | D9 | GPIO4 | Seed → P4 |
-| CS | D7 | GPIO5 | P4 → Seed |
+| SPI SCLK | D8 | GPIO2 | P4 → Seed |
+| SPI MOSI / playback | D10 | GPIO3 | P4 → Seed |
+| SPI MISO / capture | D9 | GPIO4 | Seed → P4 |
+| SPI CS | D7 | GPIO5 | P4 → Seed |
 | READY | D0 | GPIO28 | Seed → P4 |
-| UART · Seed TX | D13 / PB6 · **контакт 14** | GPIO30 / RX | Seed → P4 |
-| UART · Seed RX | D14 / PB7 · **контакт 15** | GPIO31 / TX | P4 → Seed |
-| Общая земля | DGND | GND | Общее соединение |
+| UART Seed TX | D13 / PB6 · physical **pin 14** | GPIO30 / RX | Seed → P4 |
+| UART Seed RX | D14 / PB7 · physical **pin 15** | GPIO31 / TX | P4 → Seed |
+| Ground | DGND | GND | Common |
 
-**Не путайте номер контакта и имя в libDaisy:** физические контакты **14/15**
-соответствуют **D13/D14**, а не D14/D15. UART используется для диагностики
-и команд `seed stats`, `seed reset`, `seed boot`; аудио передаётся по SPI.
-Подробнее — [обозначения и проверка UART](docs/wiring.md#uart-нумерация-и-проверка).
+Physical pins **14/15** are libDaisy **D13/D14**, not D14/D15.
+UART carries graph commands, diagnostics and CRC-protected physical level
+telemetry. Audio stays on SPI. Keep SPI wires short; the older I²S wiring is
+not used.
 
-Проводники SPI должны быть короткими. Частота SPI и аудиочасы — разные вещи:
-P4 формирует SCLK, а темп аудиоданных определяется Seed3 через READY.
-Текущая прошивка **не использует старое соединение I²S/SAI2**.
+| USB connector | Purpose |
+| :--- | :--- |
+| P4 **USB-A J1** | Bidirectional audio, via the data-only adapter above |
+| P4 **USB TO UART** | Flashing and console; `COM6` on the development bench |
+| Seed3 **USB** | ROM DFU firmware update, not the PC audio interface |
 
-### Какие USB-разъёмы использовать
+[Detailed wiring and power notes (RU)](docs/wiring.md)
 
-![Три USB-линии: аудио P4, сервис P4 и DFU Seed3; VBUS аудиолинии разорван](docs/assets/usb-connections.svg)
+## Quick start
 
-- **P4 USB-A J1** — звук в обе стороны, через data-only адаптер.
-- **P4 USB TO UART** — прошивка и журнал, на тестовом стенде `COM6`.
-- **USB Seed3** — загрузка прошивки через ROM DFU, не аудиоустройство ПК.
+### 1. Flash both boards
 
-Разъёмы и питание описаны отдельно в [руководстве по подключению](docs/wiring.md).
+Ready-to-flash images and SHA-256 files are included:
 
-## Быстрый старт
-
-### 1. Подготовить стенд
-
-Соедините платы по схеме выше, проверьте общую землю и разрыв VBUS в
-аудиокабеле. Для первого запуска обновите **обе** платы, закройте аудиоприложения
-и serial monitor. Готовые образы и SHA256 уже находятся в репозитории.
-
-| Плата | Готовый образ | Адрес записи |
+| Board | Image | Address |
 | :--- | :--- | :--- |
 | Seed3 | [Seed3P4SpiAudio.bin](Seed3/firmware/Seed3P4SpiAudio.bin) | `0x08000000` |
-| ESP32-P4 rev1.x | [Merged.bin](ESP32-P4-WIFI6-Touch-LCD-7B/firmware/ESP32P4_Seed3_SPI_UAC2_2x2_Merged.bin) | **`0x2000`** |
+| P4 rev1.x | [Merged image](ESP32-P4-WIFI6-Touch-LCD-7B/firmware/ESP32P4_Seed3_SPI_UAC2_2x2_Merged.bin) | **`0x2000`** |
 
-### 2. Прошить платы
-
-Команды выполняются из корня репозитория на подготовленном Windows-стенде.
-Для первого входа Seed в DFU: удерживайте **BOOT**, кратко нажмите **RESET**,
-отпустите BOOT. Работающий Seed можно перевести в DFU без кнопок через P4.
+Close audio applications and serial monitors. On the configured Windows host:
 
 ```powershell
-# Seed3 уже в ROM DFU; после записи запустится автоматически
+# Seed3: hold BOOT, briefly press RESET, then release BOOT.
+# A running compatible firmware can also enter DFU through "seed boot".
 .\Seed3\flash.cmd
 
-# P4 подключён к USB TO UART; замените COM6 своим портом
+# P4: connect USB TO UART; substitute your actual port.
 .\ESP32-P4-WIFI6-Touch-LCD-7B\flash.cmd COM6
 ```
 
-> [!IMPORTANT]
-> Образ P4 предназначен для **rev1.x**. Не применяйте `esptool --force`.
-> Скрипты ожидают установленный ESP-IDF/dfu-util; пути и требования указаны
-> в [полной инструкции прошивки](FLASHING_RU.md).
+Seed3 starts automatically after a successful write. **Do not use
+`esptool --force`**: the P4 image is built for rev1.x.
+[Tool installation, build paths and recovery (RU)](FLASHING_RU.md)
 
-### 3. Выбрать формат в Windows
+### 2. Prepare microSD
 
-Откройте `mmsys.cpl`. Для **«Микрофон (usb uac)»** и **«Динамики (usb uac)»**
-в разделе «Свойства → Дополнительно» выберите **2 канала, 24 бита** и одну
-из четырёх частот. В WASAPI exclusive частоту задаёт само приложение.
+Copy **the folder `SEEDFX` inside [microSD-ready](microSD-ready)** to the root
+of a FAT32 card, then insert it into the P4 board:
 
-У входа и выхода общие часы: перед переключением остановите **оба** потока
-и задайте одинаковую частоту для записи и воспроизведения.
+```text
+microSD root/
+└── SEEDFX/
+    ├── index.json
+    ├── AUTORUN.SFG
+    ├── effects/       # effect packages and editable JSON definitions
+    └── presets/       # graph packages and editable JSON definitions
+```
 
-## Экран P4
+The reader uses the onboard 4-bit SDMMC interface and validates package CRCs.
+The initial preset is two direct input-to-output wires. Refresh/restart after
+changing card contents. The current catalog limit is 64 entries.
 
-![Главный экран аудиоинтерфейса: загрузка Seed3, единая частота и четыре индикатора уровня](ui/seed3_p4_ui/preview.svg)
+> [!NOTE]
+> Current `.sfx` packages select **built-in DSP implementations** and their
+> parameters. They are not executable modules loaded from SD. A native module
+> loader is a separate, unfinished feature; see the
+> [module architecture plan (RU)](docs/SEEDFX_NATIVE_MODULES_PLAN_RU.md).
+> No claim of support for thousands of loadable native effects is made here.
 
-Экран 1024×600 работает на LVGL 9.5 и показывает данные без вмешательства
-в USB ISR или SPI audio task:
+### 3. Choose the audio format
 
-- загрузку CPU Seed3 в правом верхнем углу;
-- уровни `IN 1`, `IN 2`, `OUT 1`, `OUT 2`;
-- отдельные состояния `MIC: READY/ACTIVE` и `OUTPUT: READY/ACTIVE`;
-- одну подтверждённую физическую частоту Seed3 на всех экранах;
-- владельца общей частоты `LOCAL/WINDOWS` и подтверждённый `ON/BYPASS`;
-- состояние USB HS, размер буфера и накопительные ошибки транспорта.
+Open `mmsys.cpl` and select **2 channels, 24 bit** for both recording and
+playback. Supported rates are 44.1, 48, 88.2 and 96 kHz.
+Stop both streams before changing rate, then choose the **same rate** for both.
+Exclusive WASAPI applications select their own format.
 
-Свайп сверху вниз открывает три окна: `MONITOR`, `PEDALBOARD` и `SETTINGS`.
-По умолчанию подключение ПК выбирает монитор, а отключение — педалборд. Первый
-параметр `AUTO WINDOW SWITCH` позволяет отключить это поведение и сохраняется
-в NVS. Неактивная панель `ON/BYPASS` в локальном режиме скрыта, а нижняя
-служебная подсказка с педалборда удалена.
+All screens show the same confirmed Seed3 hardware rate. With a PC connected,
+Windows owns the shared clock; local rate selection is locked. Disconnecting
+the audio USB restores the local profile and enables the pedalboard.
 
-Без подключённого ПК педалборд всегда включён, а частота выбирается на экране
-и сохраняется в NVS. При подключении USB начальная частота берётся из локального
-профиля, после чего управление получает Windows и экранный выбор блокируется.
-После отключения ПК локальный профиль и `PEDALBOARD ON` восстанавливаются
-автоматически. P4 определяет снятие аудио-USB по прекращению реальных SOF,
-поэтому зависшие флаги `connected/mounted/suspended` не требуют перезагрузки
-платы. При разорванном VBUS длительный suspend обрабатывается так же, а возврат
-SOF автоматически возвращает управление Windows.
+Swipe down from the top to switch **MONITOR / PEDALBOARD / SETTINGS**.
+Automatic page switching on PC connect/disconnect can be disabled in Settings.
 
-Переключатели двух входов и двух выходов управляют реальным трактом. Маски
-сохраняются в NVS и передаются Seed3 в каждом SPI-кадре; отключённые каналы
-зануляются и не проходят PCM-конвертацию/микширование. Физический USB-профиль
-остаётся стабильным 2×2, поэтому Windows не переустанавливает устройство.
+## Latency and resource use
 
-USB-диагностика запоминает пожелания capture и playback раздельно, но UI не
-использует их как фактическую частоту. На всех страницах показывается только
-подтверждённый clock Seed3. Одновременный full-duplex без ASRC требует
-одинаковой частоты обоих потоков.
+| Transport | Block geometry | Intended use |
+| :--- | :--- | :--- |
+| **BALANCED** | 32 frames up to 48 kHz; 64 at 88.2/96 kHz | Default |
+| **LOW LATENCY** | 32 frames at every supported rate | Lower block latency, more CPU work |
+| **LOCAL** | No SPI audio; control/telemetry only | Automatic while USB streams are closed |
 
-[Архитектура и значения индикаторов](docs/DISPLAY_UI_RU.md) ·
-[Редактируемый проект EEZ Studio](ui/seed3_p4_ui/README_RU.md)
+USB service interval is 0.5 ms. Device buffering is selected separately with
+`buffer 1`, `buffer 2` or `buffer 4` while streams are closed. The host
+buffer is chosen in the DAW/WASAPI application; it is **not** end-to-end latency.
 
-## Задержка и устойчивость
+LVGL allocations use P4 PSRAM, preserving internal DMA memory for transport.
+Seed reserves 62 MiB of SDRAM for the resource arena and two graph delay banks.
+Audio callbacks do not allocate memory or perform storage I/O. Hidden pages
+do not redraw their level meters.
 
-Межплатный транспорт имеет три режима:
+[Transport modes and measurements (RU)](docs/TRANSPORT_MODES_RU.md) ·
+[Graph format and memory layout (RU)](docs/SEEDFX_NODES_RU.md)
 
-- `BALANCED` — 32 кадра до 48 кГц и 64 кадра на 88,2/96 кГц; основной режим;
-- `LOW LATENCY` — 32 кадра на всех частотах;
-- `LOCAL` — включается автоматически при закрытых USB-потоках: аудио по SPI
-  не передаётся, остаются только управление и телеметрия.
+## Build and test
 
-`BALANCED/LOW LATENCY` выбираются в `SETTINGS` на P4 и сохраняются в NVS.
-Подробная геометрия кадров, задержка и результаты аппаратной проверки — в
-[описании режимов транспорта](docs/TRANSPORT_MODES_RU.md).
+```powershell
+.\Seed3\build.cmd
+.\ESP32-P4-WIFI6-Touch-LCD-7B\build.cmd
 
-USB-пакеты идут каждые **0,5 мс**. Запас устройства задаётся отдельно:
-`buffer 1`, `buffer 2` или `buffer 4` через консоль P4, только при закрытых
-потоках. По умолчанию — 1 мс с округлением до блоков SPI и минимумом 64 кадра.
+# Native LVGL, graph/DSP and physical-meter tests:
+$env:SEEDFX_ZIG = 'C:\Tools\zig\zig.exe'  # Windows x86_64 Zig 0.14.1
+python tools/host/build_tests.py
+python tools/test_seedfx_pack.py
+```
 
-Буфер Windows выбирается в DAW/WASAPI, а не изменением разрядности:
+LVGL dependencies are installed by the P4 build.
+[Host-test setup and scope](tools/host/README_RU.md) ·
+[Latest direct-patching verification](docs/PEDALBOARD_DIRECT_PATCH_TEST.md)
 
-| Режим | Что проверено |
+Historical USB qualification on 18 September 2026 included 100 capture
+open/close cycles and a 301-second, 96 kHz full-duplex run with no new CRC or
+sequence errors. These results belong to that firmware snapshot, not a new
+qualification of every later UI build.
+[Historical report](docs/PCM24_ONLY_RU.md)
+
+## Project map
+
+| Directory | Responsibility |
 | :--- | :--- |
-| Минимум драйвера ≈ **3 мс** | Короткие тесты на всех четырёх частотах |
-| **10 мс** | 301 с непрерывного duplex на 96 кГц; рекомендуемый старт |
+| [Seed3/src](Seed3/src) | ADC/DAC, clock ownership, DSP graph and physical meters |
+| [P4 components](ESP32-P4-WIFI6-Touch-LCD-7B/components) | USB, SPI, control, display, PSRAM allocator and microSD reader |
+| [protocol](protocol) | Shared audio, graph, port and telemetry definitions |
+| [microSD-ready](microSD-ready) | Ready-to-copy catalog and presets |
+| [docs](docs) | Wiring, user guides, architecture and test reports |
+| [tools](tools) | Package builder, native tests, WASAPI tools and diagnostics |
+| [libraries](libraries) | Historical transport library snapshots |
 
-Размер буфера — **не** измеренная задержка от аналогового входа до выхода.
-Для загруженного ПК может потребоваться больший запас. Seed автоматически
-восстанавливает SPI-сессию после перезапуска P4; при работающем UART доступна
-команда `seed boot` для входа в DFU без кнопок.
+The active USB component is
+[`p4_uac2_stream`](ESP32-P4-WIFI6-Touch-LCD-7B/components/p4_uac2_stream).
+Historical copies are not replacements for the current integration.
 
-## Проверено на стенде
-
-Проверка **18.09.2026**, Seed3 + P4 rev1.3, Windows, SPI 20 МГц.
-
-| Испытание | Результат |
-| :--- | :--- |
-| Согласование PCM24 | Все 4 частоты, оба направления |
-| Повторное открытие capture | **100 циклов** после финального исправления |
-| Full-duplex 96 кГц / 10 мс | **301 с**, ровно **28 896 000 кадров** |
-| Ошибки позиций и разрывы WASAPI | **0** в финальном прогоне |
-| CRC / sequence SPI | **0**; новые ошибки SPI за прогон — **0** |
-| Маски каналов | `3/3 → 1/1 → 0/0 → 3/3`, применяются без reset; CPU Seed3 при 48 кГц ≈ `13% → 11% → 10% → 13%` |
-| Восстановления USB в непрерывном потоке | Прирост **0** |
-| Автоматические регрессионные тесты | **17 / 17** |
-
-После перезапуска P4 до теста был отброшен один неверный SPI-заголовок;
-его счётчик сохранён в отчёте. Аналоговые SNR/THD, разделение каналов и
-сквозная задержка не измерялись. Результаты относятся к этому стенду и профилю.
-
-[Подробности и ограничения](docs/PCM24_ONLY_RU.md) ·
-[Машиночитаемый отчёт и хеши](tools/test-output/qualification-pcm24/summary.json)
-
-## Навигация по проекту
-
-| Раздел | Содержимое |
-| :--- | :--- |
-| [Seed3](Seed3/README.md) | АЦП/ЦАП, аудиочасы, SPI slave, восстановление |
-| [ESP32-P4](ESP32-P4-WIFI6-Touch-LCD-7B/README.md) | SPI master, интеграция и сборка ESP-IDF |
-| [p4_uac2_stream](ESP32-P4-WIFI6-Touch-LCD-7B/components/p4_uac2_stream/README_RU.md) | Активная USB-библиотека v0.2.1 |
-| [Протокол SPI](protocol/spi_audio_protocol.h) | Общий формат пакета и CRC |
-| [Подключение](docs/wiring.md) | GPIO, USB и питание |
-| [Прошивка](FLASHING_RU.md) | Пошаговая инструкция отдельно для каждой платы |
-| [Настройка PCM24](docs/PCM24_ONLY_RU.md) | Частоты, буферы, тесты и диагностика |
-| [Экран P4](docs/DISPLAY_UI_RU.md) | LVGL, CPU Seed3, уровни и независимые статусы endpoints |
-| [Инструменты](tools) | WASAPI recorder, проверки WAV и журналы транспорта |
-
-<details>
-<summary><strong>Сохранённые версии и ограничения</strong></summary>
-
-Снимки [v0.1](libraries/p4_uac2_stream/README_RU.md) и
-[v0.2](libraries/p4_uac2_stream_v2/README_RU.md) сохранены отдельно.
-Они не заменяют активный PCM24-only компонент v0.2.1; их отчёты относятся
-к прежним профилям. [Описание API v0.2](libraries/p4_uac2_stream_v2/docs/API_RU.md)
-применимо к внутреннему `int32_t` API, но набор USB-форматов теперь другой.
-
-192 кГц в текущем профиле не объявлены: ограничивает полный цикл SPI-обмена
-Seed/P4, а не USB HS. Дисплей входит в текущую прошивку; Wi-Fi, SD и отдельная
-прошивка ESP32-C6 пока не включены. Аналоговый выход Seed смешивает местный вход с USB playback
-с коэффициентом 0,5; для capture используется чистый вход АЦП.
-
-В Git хранятся код, готовые прошивки, SVG-схемы и компактные отчёты.
-Сырые WAV, промежуточные сборки и временные журналы остаются локально.
-
-</details>
+**Current limits:** 12 active nodes, up to 48 graph wires, 64 catalog entries,
+no user feedback loops, no native SD module loader, no on-screen preset save.
+USB capture remains the raw ADC signal; USB playback is mixed by the existing
+output path. USB endpoints are not separate graph nodes. Wi-Fi uses the onboard
+ESP32-C6 with compatible ESP-Hosted firmware; no web server or remote effect
+control is enabled by this change.

@@ -1,0 +1,42 @@
+{
+  "format": "seedfx-effect",
+  "version": 1,
+  "package_id": "0x0001000A",
+  "id": "builtin.bitcrusher",
+  "name": "Bitcrusher",
+  "processor": "builtin:bitcrusher",
+  "effect_type": 10,
+  "category": "lofi",
+  "audio_ports": {
+    "inputs": 1,
+    "outputs": 1
+  },
+  "color": "#D47AFF",
+  "shape": "rectangle",
+  "cpu_percent": {
+    "44100": 0.32,
+    "48000": 0.35,
+    "88200": 0.6,
+    "96000": 0.64
+  },
+  "parameters": [
+    {
+      "id": "bits",
+      "name": "Bits",
+      "unit": "bit",
+      "min": 4,
+      "max": 24,
+      "step": 1,
+      "default": 12
+    },
+    {
+      "id": "mix",
+      "name": "Mix",
+      "unit": "%",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 1
+    }
+  ]
+}

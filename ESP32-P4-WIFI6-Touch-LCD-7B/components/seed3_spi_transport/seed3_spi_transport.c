@@ -16,7 +16,10 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "audio_dashboard.h"
+#include "p4_wifi_settings.h"
 #include "p4_audio_control.h"
+#include "seedfx_graph_protocol.h"
+#include "seed_meter_protocol.h"
 #include "spi_audio_protocol.h"
 #include "p4_uac2_stream.h"
 #include "seed3_spi_transport.h"
@@ -72,6 +75,8 @@ static uint32_t s_expected_rx_sequence;
 static bool s_have_rx_sequence;
 static uint32_t s_spi_pause_until;
 static uint32_t s_ready_generation;
+static uint32_t s_level_received;
+static uint32_t s_level_rejected;
 static playback_result_t playback_ring_read_block(int32_t *destination,
                                                   uint16_t frames)
 {
@@ -458,9 +463,37 @@ static void seed_uart_task(void *argument)
     uint8_t input[64];
     char line[160];
     size_t used = 0U;
+    uint32_t sent_graph_serial = 0U;
     while (true) {
+        SeedFxGraphDefinition graph;
+        uint32_t graph_serial = 0U;
+        if (p4_audio_control_get_seedfx_graph(&graph, &graph_serial)
+            && graph_serial != sent_graph_serial) {
+            const SeedFxControlHeader header = {
+                .magic = SEEDFX_CONTROL_MAGIC,
+                .version = SEEDFX_CONTROL_VERSION,
+                .command = SEEDFX_COMMAND_GRAPH,
+                .payload_bytes = sizeof(graph),
+                .sequence = graph_serial,
+                .payload_crc32 = seedfx_crc32(&graph, sizeof(graph)),
+            };
+            const int prefix = uart_write_bytes(UART_NUM_1, "\n", 1U);
+            const int wrote_header = uart_write_bytes(
+                UART_NUM_1, &header, sizeof(header));
+            const int wrote_graph = uart_write_bytes(
+                UART_NUM_1, &graph, sizeof(graph));
+            if (prefix == 1 && wrote_header == sizeof(header)
+                && wrote_graph == sizeof(graph)) {
+                sent_graph_serial = graph_serial;
+                ESP_LOGI(TAG, "SeedFX graph revision=%" PRIu32
+                         " nodes=%u queued", graph.revision,
+                         (unsigned)graph.node_count);
+            } else {
+                ESP_LOGW(TAG, "SeedFX UART write incomplete");
+            }
+        }
         const int received = uart_read_bytes(
-            UART_NUM_1, input, sizeof(input), pdMS_TO_TICKS(100));
+            UART_NUM_1, input, sizeof(input), pdMS_TO_TICKS(20));
         for (int index = 0; index < received; ++index) {
             const uint8_t byte = input[index];
             if (byte == '\r') {
@@ -468,8 +501,28 @@ static void seed_uart_task(void *argument)
             }
             if (byte == '\n') {
                 line[used] = '\0';
+                if(!strncmp(line,"SEED:LEVEL ",11)) {
+                    uint32_t levels[4];
+                    if(seed_meter_parse(line,levels)) {
+                        __atomic_fetch_add(&s_level_received,1U,__ATOMIC_RELAXED);
+                        audio_dashboard_submit_local_peaks(levels[0],levels[1],levels[2],levels[3]);
+                    } else {
+                        __atomic_fetch_add(&s_level_rejected,1U,__ATOMIC_RELAXED);
+                    }
+                    used=0;
+                    continue;
+                }
                 if (used != 0U) {
                     ESP_LOGI(TAG, "UART %s", line);
+                    if (!strncmp(line, "SEED:BOOT", 9U)
+                        || !strcmp(line, "SEED:AUDIO_START")
+                        || (!strncmp(line, "SEED:SFX", 8U)
+                            && strstr(line, " OK") == NULL)) {
+                        /* BOOT may arrive before UART RX is armed, or lose its
+                         * first bytes during reset. AUDIO_START is the final
+                         * ready marker and must also resend the current graph. */
+                        sent_graph_serial = 0U;
+                    }
                 }
                 used = 0U;
             } else if (used + 1U < sizeof(line)) {
@@ -505,12 +558,15 @@ static esp_err_t init_seed_uart(void)
         uart_driver_install(UART_NUM_1, 512, 0, 0, NULL, 0), TAG,
         "cannot install Seed diagnostic UART");
     const BaseType_t result = xTaskCreatePinnedToCore(
-        seed_uart_task, "seed_uart", 3072, NULL, 8, NULL, 0);
+        seed_uart_task, "seed_uart", 4096, NULL, 8, NULL, 0);
     return result == pdPASS ? ESP_OK : ESP_ERR_NO_MEM;
 }
 
 static void log_stats(void)
 {
+    ESP_LOGI(TAG, "physical meters rx=%" PRIu32 " bad=%" PRIu32,
+             __atomic_load_n(&s_level_received,__ATOMIC_RELAXED),
+             __atomic_load_n(&s_level_rejected,__ATOMIC_RELAXED));
     audio_stats_t snapshot;
     portENTER_CRITICAL(&s_stats_mux);
     snapshot = s_stats;
@@ -636,6 +692,17 @@ static void console_task(void *argument)
             if (!p4_uac2_capture_active() && !p4_uac2_playback_active())
                 uart_write_bytes(UART_NUM_1, "\n@STATS\n", 8);
             else ESP_LOGW(TAG, "Close audio streams before requesting Seed stats");
+        }
+        else if (!strcmp(line, "ui stress")) {
+            ESP_LOGI(TAG, "UI stress: %s", esp_err_to_name(audio_dashboard_test_pedalboard()));
+        }
+        else if (!strcmp(line,"wifi scan")) {
+            ESP_LOGI(TAG,"Wi-Fi scan queued=%u",p4_wifi_scan());
+        }
+        else if (!strcmp(line,"wifi status")) {
+            p4_wifi_status_t wifi;p4_wifi_get_status(&wifi);
+            ESP_LOGI(TAG,"Wi-Fi connected=%u busy=%u reconnect=%u networks=%u status=%s",
+                wifi.connected,wifi.busy,wifi.reconnect,wifi.ap_count,wifi.message);
         }
         else if (!strncmp(line, "buffer ", 7)) {
             esp_err_t result = p4_uac2_set_buffer_ms((uint32_t)strtoul(line + 7, NULL, 10));

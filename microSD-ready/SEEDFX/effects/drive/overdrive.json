@@ -1,0 +1,51 @@
+{
+  "format": "seedfx-effect",
+  "version": 1,
+  "package_id": "0x00010007",
+  "id": "builtin.overdrive",
+  "name": "Overdrive",
+  "processor": "builtin:overdrive",
+  "effect_type": 7,
+  "category": "drive",
+  "audio_ports": {
+    "inputs": 1,
+    "outputs": 1
+  },
+  "color": "#F58B3D",
+  "shape": "rounded",
+  "cpu_percent": {
+    "44100": 0.55,
+    "48000": 0.6,
+    "88200": 1.03,
+    "96000": 1.1
+  },
+  "parameters": [
+    {
+      "id": "drive",
+      "name": "Drive",
+      "unit": "%",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.45
+    },
+    {
+      "id": "tone",
+      "name": "Tone",
+      "unit": "%",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.55
+    },
+    {
+      "id": "level",
+      "name": "Level",
+      "unit": "%",
+      "min": 0,
+      "max": 1.5,
+      "step": 0.01,
+      "default": 0.8
+    }
+  ]
+}

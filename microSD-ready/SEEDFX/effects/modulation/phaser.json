@@ -1,0 +1,60 @@
+{
+  "format": "seedfx-effect",
+  "version": 1,
+  "package_id": "0x0001001E",
+  "id": "builtin.phaser",
+  "name": "Phaser",
+  "processor": "builtin:phaser",
+  "effect_type": 30,
+  "category": "modulation",
+  "audio_ports": {
+    "inputs": 1,
+    "outputs": 1
+  },
+  "color": "#8878F5",
+  "shape": "pill",
+  "cpu_percent": {
+    "44100": 1.1,
+    "48000": 1.2,
+    "88200": 2.06,
+    "96000": 2.21
+  },
+  "parameters": [
+    {
+      "id": "rate",
+      "name": "Rate",
+      "unit": "Hz",
+      "min": 0.05,
+      "max": 8,
+      "step": 0.05,
+      "default": 0.4
+    },
+    {
+      "id": "depth",
+      "name": "Depth",
+      "unit": "%",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.75
+    },
+    {
+      "id": "feedback",
+      "name": "Feedback",
+      "unit": "%",
+      "min": -0.9,
+      "max": 0.9,
+      "step": 0.01,
+      "default": 0.2
+    },
+    {
+      "id": "mix",
+      "name": "Mix",
+      "unit": "%",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.5
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "format": "seedfx-preset",
+  "version": 1,
+  "name": "Starter",
+  "revision": 1,
+  "enabled": true,
+  "nodes": [
+    {"type": "gain", "enabled": true, "shape": "rounded", "parameters": [0]},
+    {"type": "soft_clip", "enabled": false, "shape": "pill", "parameters": [6, 1]}
+  ]
+}

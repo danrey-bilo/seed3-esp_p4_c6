@@ -1,0 +1,8 @@
+{
+  "format": "seedfx-preset",
+  "version": 1,
+  "name": "Empty thru",
+  "revision": 1,
+  "enabled": true,
+  "nodes": []
+}

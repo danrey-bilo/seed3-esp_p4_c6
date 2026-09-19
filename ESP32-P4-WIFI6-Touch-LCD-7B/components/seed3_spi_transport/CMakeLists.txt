@@ -3,5 +3,5 @@ idf_component_register(
     INCLUDE_DIRS "include"
     PRIV_INCLUDE_DIRS "../../../protocol"
     REQUIRES esp_driver_gpio esp_driver_spi esp_driver_uart p4_uac2_stream
-             p4_audio_control p4_audio_dashboard
+             p4_audio_control p4_audio_dashboard p4_wifi_settings
 )

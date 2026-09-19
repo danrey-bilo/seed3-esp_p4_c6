@@ -1,6 +1,6 @@
 TARGET = Seed3P4SpiAudio
 
-CPP_SOURCES = src/main.cpp src/seed_audio_clock.cpp
+CPP_SOURCES = src/main.cpp src/seed_audio_clock.cpp src/seedfx_graph.cpp src/seed_level_meter.cpp
 C_INCLUDES += -I../protocol
 
 # A normal checkout should place libDaisy here (for example as a submodule).

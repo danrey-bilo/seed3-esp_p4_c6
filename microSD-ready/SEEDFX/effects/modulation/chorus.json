@@ -1,0 +1,60 @@
+{
+  "format": "seedfx-effect",
+  "version": 1,
+  "package_id": "0x0001001B",
+  "id": "builtin.chorus",
+  "name": "Chorus",
+  "processor": "builtin:chorus",
+  "effect_type": 27,
+  "category": "modulation",
+  "audio_ports": {
+    "inputs": 1,
+    "outputs": 2
+  },
+  "color": "#58D9D0",
+  "shape": "rounded",
+  "cpu_percent": {
+    "44100": 0.97,
+    "48000": 1.05,
+    "88200": 1.81,
+    "96000": 1.93
+  },
+  "parameters": [
+    {
+      "id": "rate",
+      "name": "Rate",
+      "unit": "Hz",
+      "min": 0.05,
+      "max": 8,
+      "step": 0.05,
+      "default": 0.8
+    },
+    {
+      "id": "depth",
+      "name": "Depth",
+      "unit": "ms",
+      "min": 0,
+      "max": 15,
+      "step": 0.1,
+      "default": 7
+    },
+    {
+      "id": "mix",
+      "name": "Mix",
+      "unit": "%",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.35
+    },
+    {
+      "id": "stereo",
+      "name": "Stereo",
+      "unit": "%",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 1
+    }
+  ]
+}

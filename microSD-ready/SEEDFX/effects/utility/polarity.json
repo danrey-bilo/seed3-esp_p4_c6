@@ -1,0 +1,23 @@
+{
+  "format": "seedfx-effect",
+  "version": 1,
+  "package_id": "0x00010004",
+  "id": "builtin.polarity",
+  "name": "Polarity",
+  "processor": "builtin:polarity",
+  "effect_type": 4,
+  "category": "utility",
+  "audio_ports": {
+    "inputs": 2,
+    "outputs": 2
+  },
+  "color": "#B596FF",
+  "shape": "rounded",
+  "cpu_percent": {
+    "44100": 0.05,
+    "48000": 0.05,
+    "88200": 0.09,
+    "96000": 0.09
+  },
+  "parameters": []
+}

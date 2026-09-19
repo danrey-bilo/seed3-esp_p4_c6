@@ -1,0 +1,60 @@
+{
+  "format": "seedfx-effect",
+  "version": 1,
+  "package_id": "0x0001001F",
+  "id": "builtin.auto_wah",
+  "name": "Auto Wah",
+  "processor": "builtin:auto_wah",
+  "effect_type": 31,
+  "category": "filter",
+  "audio_ports": {
+    "inputs": 1,
+    "outputs": 1
+  },
+  "color": "#E6A94F",
+  "shape": "rounded",
+  "cpu_percent": {
+    "44100": 0.85,
+    "48000": 0.92,
+    "88200": 1.58,
+    "96000": 1.69
+  },
+  "parameters": [
+    {
+      "id": "sensitivity",
+      "name": "Sensitivity",
+      "unit": "%",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.65
+    },
+    {
+      "id": "base",
+      "name": "Base",
+      "unit": "Hz",
+      "min": 100,
+      "max": 2000,
+      "step": 10,
+      "default": 350
+    },
+    {
+      "id": "range",
+      "name": "Range",
+      "unit": "Hz",
+      "min": 100,
+      "max": 7000,
+      "step": 10,
+      "default": 2800
+    },
+    {
+      "id": "resonance",
+      "name": "Resonance",
+      "unit": "%",
+      "min": 0,
+      "max": 0.95,
+      "step": 0.01,
+      "default": 0.5
+    }
+  ]
+}

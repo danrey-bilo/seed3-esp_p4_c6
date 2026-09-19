@@ -1,0 +1,60 @@
+{
+  "format": "seedfx-effect",
+  "version": 1,
+  "package_id": "0x0001001C",
+  "id": "builtin.flanger",
+  "name": "Flanger",
+  "processor": "builtin:flanger",
+  "effect_type": 28,
+  "category": "modulation",
+  "audio_ports": {
+    "inputs": 1,
+    "outputs": 1
+  },
+  "color": "#4CC9D8",
+  "shape": "pill",
+  "cpu_percent": {
+    "44100": 0.87,
+    "48000": 0.95,
+    "88200": 1.63,
+    "96000": 1.75
+  },
+  "parameters": [
+    {
+      "id": "rate",
+      "name": "Rate",
+      "unit": "Hz",
+      "min": 0.05,
+      "max": 8,
+      "step": 0.05,
+      "default": 0.35
+    },
+    {
+      "id": "depth",
+      "name": "Depth",
+      "unit": "ms",
+      "min": 0,
+      "max": 8,
+      "step": 0.1,
+      "default": 3
+    },
+    {
+      "id": "feedback",
+      "name": "Feedback",
+      "unit": "%",
+      "min": -0.9,
+      "max": 0.9,
+      "step": 0.01,
+      "default": 0.35
+    },
+    {
+      "id": "mix",
+      "name": "Mix",
+      "unit": "%",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.5
+    }
+  ]
+}

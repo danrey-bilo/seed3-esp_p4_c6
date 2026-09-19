@@ -1,9 +1,12 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #include "esp_err.h"
+#include "seedfx_graph_protocol.h"
+#include "seedfx_catalog.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -57,6 +60,16 @@ void p4_audio_control_set_transport_errors(uint32_t spi_errors,
                                            uint32_t crc_errors);
 
 void p4_audio_control_get_snapshot(p4_audio_control_snapshot_t *snapshot);
+
+/* Lock-free seqlock snapshot consumed by the low-priority Seed UART task.
+ * serial changes after each accepted pedalboard edit. */
+bool p4_audio_control_get_seedfx_graph(SeedFxGraphDefinition *graph,
+                                      uint32_t *serial);
+
+esp_err_t p4_audio_control_install_seedfx_catalog(
+    const SeedFxCatalogEntry *entries, size_t count);
+esp_err_t p4_audio_control_load_seedfx_graph(
+    const SeedFxGraphDefinition *graph);
 
 #ifdef __cplusplus
 }

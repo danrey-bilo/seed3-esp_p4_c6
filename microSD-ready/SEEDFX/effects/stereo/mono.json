@@ -1,0 +1,23 @@
+{
+  "format": "seedfx-effect",
+  "version": 1,
+  "package_id": "0x00010021",
+  "id": "builtin.mono",
+  "name": "Mono",
+  "processor": "builtin:mono",
+  "effect_type": 33,
+  "category": "stereo",
+  "audio_ports": {
+    "inputs": 2,
+    "outputs": 1
+  },
+  "color": "#7892AA",
+  "shape": "rectangle",
+  "cpu_percent": {
+    "44100": 0.07,
+    "48000": 0.08,
+    "88200": 0.14,
+    "96000": 0.15
+  },
+  "parameters": []
+}

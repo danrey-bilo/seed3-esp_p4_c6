@@ -1,0 +1,51 @@
+{
+  "format": "seedfx-effect",
+  "version": 1,
+  "package_id": "0x00010027",
+  "id": "builtin.doubler",
+  "name": "Doubler",
+  "processor": "builtin:doubler",
+  "effect_type": 39,
+  "category": "space",
+  "audio_ports": {
+    "inputs": 1,
+    "outputs": 2
+  },
+  "color": "#72CFE8",
+  "shape": "rounded",
+  "cpu_percent": {
+    "44100": 0.85,
+    "48000": 0.92,
+    "88200": 1.58,
+    "96000": 1.69
+  },
+  "parameters": [
+    {
+      "id": "time",
+      "name": "Time",
+      "unit": "ms",
+      "min": 8,
+      "max": 45,
+      "step": 0.5,
+      "default": 22
+    },
+    {
+      "id": "detune",
+      "name": "Detune",
+      "unit": "%",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.35
+    },
+    {
+      "id": "mix",
+      "name": "Mix",
+      "unit": "%",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.4
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "format": "seedfx-effect",
+  "version": 1,
+  "package_id": "0x00010025",
+  "id": "builtin.cabinet_sim",
+  "name": "Cabinet Sim",
+  "processor": "builtin:cabinet_sim",
+  "effect_type": 37,
+  "category": "tone",
+  "audio_ports": {
+    "inputs": 1,
+    "outputs": 1
+  },
+  "color": "#C58A52",
+  "shape": "rectangle",
+  "cpu_percent": {
+    "44100": 0.64,
+    "48000": 0.7,
+    "88200": 1.2,
+    "96000": 1.29
+  },
+  "parameters": [
+    {
+      "id": "body",
+      "name": "Body",
+      "unit": "%",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.55
+    },
+    {
+      "id": "presence",
+      "name": "Presence",
+      "unit": "%",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.45
+    },
+    {
+      "id": "mix",
+      "name": "Mix",
+      "unit": "%",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 1
+    }
+  ]
+}

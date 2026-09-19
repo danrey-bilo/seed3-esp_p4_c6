@@ -1,0 +1,23 @@
+{
+  "format": "seedfx-effect",
+  "version": 1,
+  "package_id": "0x00010022",
+  "id": "builtin.channel_swap",
+  "name": "Channel Swap",
+  "processor": "builtin:channel_swap",
+  "effect_type": 34,
+  "category": "stereo",
+  "audio_ports": {
+    "inputs": 2,
+    "outputs": 2
+  },
+  "color": "#849BB2",
+  "shape": "rectangle",
+  "cpu_percent": {
+    "44100": 0.05,
+    "48000": 0.05,
+    "88200": 0.09,
+    "96000": 0.09
+  },
+  "parameters": []
+}

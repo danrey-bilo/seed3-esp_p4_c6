@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "esp_err.h"
+#include "seedfx_catalog.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -15,6 +16,17 @@ enum {
     AUDIO_DASHBOARD_TRANSPORT_LOW_LATENCY = 1,
     AUDIO_DASHBOARD_TRANSPORT_LOCAL = 2,
 };
+
+typedef enum {
+    AUDIO_DASHBOARD_GRAPH_ADD = 1,
+    AUDIO_DASHBOARD_GRAPH_DELETE = 2,
+    AUDIO_DASHBOARD_GRAPH_REPLACE = 3,
+    AUDIO_DASHBOARD_GRAPH_TOGGLE = 4,
+    AUDIO_DASHBOARD_GRAPH_SET_PARAMETER = 5,
+    AUDIO_DASHBOARD_GRAPH_SELECT_INPUT = 6,
+    AUDIO_DASHBOARD_GRAPH_CONNECT = 7,
+    AUDIO_DASHBOARD_GRAPH_DISCONNECT = 8,
+} audio_dashboard_graph_action_t;
 
 typedef struct {
     /* The one confirmed physical Seed3 clock shown on every screen. */
@@ -53,11 +65,25 @@ typedef struct {
     bool auto_switch_views;
     bool set_transport_profile;
     uint8_t transport_profile;
+    bool edit_graph;
+    uint8_t graph_action;
+    uint8_t graph_node_index;
+    uint16_t graph_effect_type;
+    uint8_t graph_parameter_index;
+    float graph_parameter_value;
+    uint16_t graph_source_id;
+    uint16_t graph_destination_id;
+    uint8_t graph_source_port;
+    uint8_t graph_destination_port;
 } audio_dashboard_command_t;
 
 /* Starts the Waveshare 1024x600 MIPI-DSI display and the low-priority LVGL
  * presentation task. Audio/USB/SPI work never runs in that task. */
 esp_err_t audio_dashboard_init(void);
+
+/* Diagnostic preview only: repeatedly render 0..12 pedals without changing
+ * the audio graph. Restores the user's board after the test. */
+esp_err_t audio_dashboard_test_pedalboard(void);
 
 /* Constant-time, lock-free publication from the SPI task. Values are absolute
  * PCM24-left-aligned Q31 peaks for IN1, IN2, OUT1 and OUT2. */
@@ -65,6 +91,10 @@ void audio_dashboard_submit_peaks(uint32_t input_left,
                                   uint32_t input_right,
                                   uint32_t output_left,
                                   uint32_t output_right);
+
+/* Physical ADC/DAC levels from Seed3 UART, including the local effects path. */
+void audio_dashboard_submit_local_peaks(uint32_t input_left,uint32_t input_right,
+                                        uint32_t output_left,uint32_t output_right);
 
 /* True only while the live monitor page is visible. The SPI task uses this
  * hint to skip peak calculations when another window is open. */
@@ -76,6 +106,13 @@ void audio_dashboard_publish_status(const audio_dashboard_status_t *status);
 /* Collapses repeated UI actions to their newest value. The application control
  * task is the sole consumer and validates ownership before applying them. */
 bool audio_dashboard_take_command(audio_dashboard_command_t *command);
+
+/* Install data read from microSD before audio_dashboard_init(). Both calls
+ * copy their input and remain valid when the card is removed afterwards. */
+esp_err_t audio_dashboard_install_seedfx_catalog(
+    const SeedFxCatalogEntry *entries, size_t count);
+esp_err_t audio_dashboard_install_seedfx_graph(
+    const SeedFxGraphDefinition *graph);
 
 #ifdef __cplusplus
 }

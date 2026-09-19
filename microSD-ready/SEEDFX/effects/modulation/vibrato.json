@@ -1,0 +1,51 @@
+{
+  "format": "seedfx-effect",
+  "version": 1,
+  "package_id": "0x0001001D",
+  "id": "builtin.vibrato",
+  "name": "Vibrato",
+  "processor": "builtin:vibrato",
+  "effect_type": 29,
+  "category": "modulation",
+  "audio_ports": {
+    "inputs": 1,
+    "outputs": 1
+  },
+  "color": "#49BDD0",
+  "shape": "rounded",
+  "cpu_percent": {
+    "44100": 0.85,
+    "48000": 0.92,
+    "88200": 1.58,
+    "96000": 1.69
+  },
+  "parameters": [
+    {
+      "id": "rate",
+      "name": "Rate",
+      "unit": "Hz",
+      "min": 0.1,
+      "max": 12,
+      "step": 0.1,
+      "default": 5
+    },
+    {
+      "id": "depth",
+      "name": "Depth",
+      "unit": "ms",
+      "min": 0,
+      "max": 12,
+      "step": 0.1,
+      "default": 4
+    },
+    {
+      "id": "mix",
+      "name": "Mix",
+      "unit": "%",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 1
+    }
+  ]
+}

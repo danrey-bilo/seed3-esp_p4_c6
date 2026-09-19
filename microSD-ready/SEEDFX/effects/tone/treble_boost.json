@@ -1,0 +1,42 @@
+{
+  "format": "seedfx-effect",
+  "version": 1,
+  "package_id": "0x00010011",
+  "id": "builtin.treble_boost",
+  "name": "Treble Boost",
+  "processor": "builtin:treble_boost",
+  "effect_type": 17,
+  "category": "tone",
+  "audio_ports": {
+    "inputs": 1,
+    "outputs": 1
+  },
+  "color": "#6BE6A6",
+  "shape": "rounded",
+  "cpu_percent": {
+    "44100": 0.39,
+    "48000": 0.42,
+    "88200": 0.72,
+    "96000": 0.77
+  },
+  "parameters": [
+    {
+      "id": "frequency",
+      "name": "Frequency",
+      "unit": "Hz",
+      "min": 1000,
+      "max": 12000,
+      "step": 10,
+      "default": 3500
+    },
+    {
+      "id": "gain",
+      "name": "Boost",
+      "unit": "dB",
+      "min": 0,
+      "max": 18,
+      "step": 0.5,
+      "default": 5
+    }
+  ]
+}

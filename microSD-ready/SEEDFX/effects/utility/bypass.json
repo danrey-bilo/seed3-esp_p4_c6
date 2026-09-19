@@ -1,0 +1,23 @@
+{
+  "format": "seedfx-effect",
+  "version": 1,
+  "package_id": "0x00010001",
+  "id": "builtin.bypass",
+  "name": "Bypass",
+  "processor": "builtin:bypass",
+  "effect_type": 1,
+  "category": "utility",
+  "audio_ports": {
+    "inputs": 2,
+    "outputs": 2
+  },
+  "color": "#5D7892",
+  "shape": "rectangle",
+  "cpu_percent": {
+    "44100": 0.02,
+    "48000": 0.02,
+    "88200": 0.03,
+    "96000": 0.04
+  },
+  "parameters": []
+}

@@ -1,0 +1,60 @@
+{
+  "format": "seedfx-effect",
+  "version": 1,
+  "package_id": "0x00010012",
+  "id": "builtin.compressor",
+  "name": "Compressor",
+  "processor": "builtin:compressor",
+  "effect_type": 18,
+  "category": "dynamics",
+  "audio_ports": {
+    "inputs": 1,
+    "outputs": 1
+  },
+  "color": "#5BE37D",
+  "shape": "rounded",
+  "cpu_percent": {
+    "44100": 0.66,
+    "48000": 0.72,
+    "88200": 1.24,
+    "96000": 1.32
+  },
+  "parameters": [
+    {
+      "id": "threshold",
+      "name": "Threshold",
+      "unit": "dB",
+      "min": -60,
+      "max": 0,
+      "step": 0.5,
+      "default": -18
+    },
+    {
+      "id": "ratio",
+      "name": "Ratio",
+      "unit": "x",
+      "min": 1,
+      "max": 20,
+      "step": 0.5,
+      "default": 4
+    },
+    {
+      "id": "attack",
+      "name": "Attack",
+      "unit": "ms",
+      "min": 1,
+      "max": 100,
+      "step": 1,
+      "default": 10
+    },
+    {
+      "id": "release",
+      "name": "Release",
+      "unit": "ms",
+      "min": 10,
+      "max": 1000,
+      "step": 5,
+      "default": 120
+    }
+  ]
+}

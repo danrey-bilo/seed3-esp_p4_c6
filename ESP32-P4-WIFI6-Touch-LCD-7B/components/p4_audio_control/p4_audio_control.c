@@ -1,4 +1,8 @@
 #include "p4_audio_control.h"
+#include <math.h>
+#include "seedfx_ports.h"
+#include "seedfx_routing.h"
+#include "seedfx_routing_catalog.h"
 
 #include <inttypes.h>
 #include <string.h>
@@ -29,10 +33,183 @@ static uint32_t s_capture_channel_mask = SPI_AUDIO_CONTROL_CHANNEL_MASK;
 static uint32_t s_playback_channel_mask = SPI_AUDIO_CONTROL_CHANNEL_MASK;
 static uint32_t s_spi_errors;
 static uint32_t s_crc_errors;
+static SeedFxGraphDefinition s_seedfx_graph;
+static uint32_t s_seedfx_graph_seqlock;
+static uint32_t s_seedfx_graph_serial;
 static nvs_handle_t s_settings_handle;
 static bool s_settings_ready;
 static bool s_prepared;
 static TaskHandle_t s_control_task;
+static SeedFxCatalogEntry s_seedfx_catalog[SEEDFX_MAX_EFFECTS];
+static size_t s_seedfx_catalog_count;
+
+static const SeedFxCatalogEntry *effect_info(uint16_t effect_type)
+{
+    for (size_t index = 0; index < s_seedfx_catalog_count; ++index)
+        if (s_seedfx_catalog[index].effect_type == effect_type)
+            return &s_seedfx_catalog[index];
+    return NULL;
+}
+
+static bool effect_type_valid(uint16_t effect_type)
+{
+    return effect_info(effect_type) != NULL;
+}
+
+static void configure_node(SeedFxNodeDefinition *node,
+                           uint16_t id,
+                           const SeedFxCatalogEntry *effect)
+{
+    memset(node, 0, sizeof(*node));
+    node->id = id;
+    node->effect_type = effect->effect_type;
+    node->package_id = effect->package_id;
+    node->flags = SEEDFX_NODE_ENABLED;
+    node->parameter_count = effect->parameter_count;
+    node->shape = effect->shape;
+    node->reserved = __atomic_load_n(&s_capture_channel_mask, __ATOMIC_ACQUIRE) == 2U ? 1 : 0;
+    for (uint8_t p = 0; p < effect->parameter_count; ++p)
+        node->parameters[p] = effect->parameters[p].default_value;
+}
+
+static void init_fallback_catalog(void)
+{
+    memset(s_seedfx_catalog, 0, sizeof(s_seedfx_catalog));
+    const uint16_t types[] = {SEEDFX_EFFECT_BYPASS, SEEDFX_EFFECT_GAIN,
+        SEEDFX_EFFECT_MUTE, SEEDFX_EFFECT_POLARITY, SEEDFX_EFFECT_SOFT_CLIP};
+    for (size_t index = 0; index < sizeof(types) / sizeof(types[0]); ++index) {
+        SeedFxCatalogEntry *effect = &s_seedfx_catalog[index];
+        effect->package_id = 0x00010000U + types[index];
+        effect->effect_type = types[index];
+        effect->shape = types[index] == SEEDFX_EFFECT_SOFT_CLIP
+            ? SEEDFX_SHAPE_PILL : (types[index] == SEEDFX_EFFECT_GAIN
+                || types[index] == SEEDFX_EFFECT_POLARITY
+                    ? SEEDFX_SHAPE_ROUNDED : SEEDFX_SHAPE_RECTANGLE);
+        effect->parameter_count = types[index] == SEEDFX_EFFECT_SOFT_CLIP
+            ? 2U : (types[index] == SEEDFX_EFFECT_GAIN ? 1U : 0U);
+    }
+    s_seedfx_catalog[1].parameters[0].minimum = -60.0f;
+    s_seedfx_catalog[1].parameters[0].maximum = 18.0f;
+    s_seedfx_catalog[1].parameters[0].step = 0.5f;
+    s_seedfx_catalog[4].parameters[0].maximum = 30.0f;
+    s_seedfx_catalog[4].parameters[0].step = 0.5f;
+    s_seedfx_catalog[4].parameters[0].default_value = 6.0f;
+    s_seedfx_catalog[4].parameters[1].maximum = 1.0f;
+    s_seedfx_catalog[4].parameters[1].step = 0.01f;
+    s_seedfx_catalog[4].parameters[1].default_value = 1.0f;
+    s_seedfx_catalog_count = sizeof(types) / sizeof(types[0]);
+    seedfx_add_routing_catalog(s_seedfx_catalog,&s_seedfx_catalog_count);
+}
+
+static void init_thru_edges(SeedFxGraphDefinition *graph)
+{
+    memset(graph->edges, 0, sizeof(graph->edges));
+    graph->edge_count = 2;
+    graph->edges[0]=(SeedFxEdgeDefinition){0,0,1,0,0,0};
+    graph->edges[1]=(SeedFxEdgeDefinition){0,0,1,1,1,0};
+}
+
+static void finish_graph_edit(void)
+{
+    ++s_seedfx_graph.revision;
+    s_seedfx_graph.crc32 = seedfx_graph_crc32(&s_seedfx_graph);
+    ++s_seedfx_graph_serial;
+    __atomic_fetch_add(&s_seedfx_graph_seqlock, 1U, __ATOMIC_RELEASE);
+}
+
+static void init_default_graph(void)
+{
+    memset(&s_seedfx_graph, 0, sizeof(s_seedfx_graph));
+    s_seedfx_graph.magic = SEEDFX_GRAPH_MAGIC;
+    s_seedfx_graph.version = SEEDFX_GRAPH_VERSION;
+    s_seedfx_graph.bytes = sizeof(s_seedfx_graph);
+    s_seedfx_graph.revision = 1U;
+    s_seedfx_graph.flags = SEEDFX_GRAPH_ENABLED;
+    memcpy(s_seedfx_graph.name, "Pedalboard", 10U);
+    init_thru_edges(&s_seedfx_graph);
+    s_seedfx_graph.crc32 = seedfx_graph_crc32(&s_seedfx_graph);
+    s_seedfx_graph_serial = 1U;
+}
+
+static void apply_graph_edit(const audio_dashboard_command_t *command)
+{
+    if (command == NULL || !command->edit_graph) return;
+    const uint8_t index = command->graph_node_index;
+    bool changed = false;
+    __atomic_fetch_add(&s_seedfx_graph_seqlock, 1U, __ATOMIC_ACQ_REL);
+    switch ((audio_dashboard_graph_action_t)command->graph_action) {
+        case AUDIO_DASHBOARD_GRAPH_ADD:
+            if (s_seedfx_graph.node_count < SEEDFX_MAX_NODES
+                && effect_type_valid(command->graph_effect_type)) {
+                const uint16_t id=seedfx_next_node_id(&s_seedfx_graph);
+                SeedFxNodeDefinition *node =
+                    &s_seedfx_graph.nodes[s_seedfx_graph.node_count++];
+                configure_node(node, id,
+                               effect_info(command->graph_effect_type));
+                changed = true;
+            }
+            break;
+        case AUDIO_DASHBOARD_GRAPH_DELETE:
+            if (index < s_seedfx_graph.node_count) {
+                memmove(&s_seedfx_graph.nodes[index],
+                        &s_seedfx_graph.nodes[index + 1U],
+                        (s_seedfx_graph.node_count - index - 1U)
+                            * sizeof(s_seedfx_graph.nodes[0]));
+                --s_seedfx_graph.node_count;
+                seedfx_prune_invalid_ports(&s_seedfx_graph);
+                changed = true;
+            }
+            break;
+        case AUDIO_DASHBOARD_GRAPH_REPLACE:
+            if (index < s_seedfx_graph.node_count
+                && effect_type_valid(command->graph_effect_type)) {
+                SeedFxNodeDefinition *node = &s_seedfx_graph.nodes[index];
+                configure_node(node, node->id,
+                               effect_info(command->graph_effect_type));
+                seedfx_prune_invalid_ports(&s_seedfx_graph);
+                changed = true;
+            }
+            break;
+        case AUDIO_DASHBOARD_GRAPH_TOGGLE:
+            if (index < s_seedfx_graph.node_count) {
+                s_seedfx_graph.nodes[index].flags ^= SEEDFX_NODE_ENABLED;
+                changed = true;
+            }
+            break;
+        case AUDIO_DASHBOARD_GRAPH_SET_PARAMETER:
+            if (index < s_seedfx_graph.node_count
+                && command->graph_parameter_index
+                       < s_seedfx_graph.nodes[index].parameter_count) {
+                const SeedFxCatalogEntry *effect = effect_info(
+                    s_seedfx_graph.nodes[index].effect_type);
+                const uint8_t p = command->graph_parameter_index;
+                if (effect != NULL && p < effect->parameter_count
+                    && isfinite(command->graph_parameter_value)) {
+                    const SeedFxParameterDescriptor *range = &effect->parameters[p];
+                    s_seedfx_graph.nodes[index].parameters[p] = fminf(range->maximum,
+                        fmaxf(range->minimum, command->graph_parameter_value));
+                    changed = true;
+                }
+            }
+            break;
+        case AUDIO_DASHBOARD_GRAPH_CONNECT:
+            changed=seedfx_connect(&s_seedfx_graph,command->graph_source_id,
+                command->graph_source_port,command->graph_destination_id,command->graph_destination_port);
+            if(!changed) ESP_LOGW(TAG,"Rejected invalid/cyclic route");
+            break;
+        case AUDIO_DASHBOARD_GRAPH_DISCONNECT:
+            seedfx_disconnect_input(&s_seedfx_graph,command->graph_destination_id,command->graph_destination_port);
+            changed=true;
+            break;
+        default:
+            break;
+    }
+    if (changed) {
+        finish_graph_edit();
+    } else {
+        __atomic_fetch_add(&s_seedfx_graph_seqlock, 1U, __ATOMIC_RELEASE);
+    }
+}
 
 static uint32_t local_sample_rate(void)
 {
@@ -189,6 +366,7 @@ static void control_task(void *argument)
 
         audio_dashboard_command_t command = {0};
         if (audio_dashboard_take_command(&command)) {
+            apply_graph_edit(&command);
             if (command.set_pedalboard_enabled) {
                 __atomic_store_n(
                     &s_pedalboard_requested,
@@ -254,6 +432,8 @@ esp_err_t p4_audio_control_prepare(void)
 {
     if (s_prepared) return ESP_ERR_INVALID_STATE;
 
+    init_fallback_catalog();
+    init_default_graph();
     esp_err_t result = nvs_flash_init();
     if (result == ESP_OK) {
         result = nvs_open("audio_mode", NVS_READWRITE, &s_settings_handle);
@@ -422,4 +602,65 @@ void p4_audio_control_get_snapshot(p4_audio_control_snapshot_t *snapshot)
         p4_audio_control_capture_channel_mask();
     snapshot->playback_channel_mask =
         p4_audio_control_playback_channel_mask();
+}
+
+bool p4_audio_control_get_seedfx_graph(SeedFxGraphDefinition *graph,
+                                      uint32_t *serial)
+{
+    if (graph == NULL || serial == NULL) return false;
+    /* UART has higher priority than this graph's writer on the same core.
+     * Never spin on an interrupted writer: let UART's next 20 ms poll retry. */
+    for (unsigned attempt=0; attempt<3; ++attempt) {
+        const uint32_t before = __atomic_load_n(
+            &s_seedfx_graph_seqlock, __ATOMIC_ACQUIRE);
+        if ((before & 1U) != 0U) return false;
+        memcpy(graph, &s_seedfx_graph, sizeof(*graph));
+        *serial = __atomic_load_n(&s_seedfx_graph_serial, __ATOMIC_ACQUIRE);
+        const uint32_t after = __atomic_load_n(
+            &s_seedfx_graph_seqlock, __ATOMIC_ACQUIRE);
+        if (before == after && (after & 1U) == 0U) return true;
+    }
+    return false;
+}
+
+esp_err_t p4_audio_control_install_seedfx_catalog(
+    const SeedFxCatalogEntry *entries, size_t count)
+{
+    if (entries == NULL || count == 0U || count > SEEDFX_MAX_EFFECTS)
+        return ESP_ERR_INVALID_ARG;
+    for (size_t index = 0; index < count; ++index) {
+        if (entries[index].effect_type < SEEDFX_EFFECT_BYPASS
+            || entries[index].effect_type > SEEDFX_EFFECT_LAST
+            || entries[index].parameter_count > SEEDFX_MAX_PARAMS)
+            return ESP_ERR_INVALID_ARG;
+    }
+    memcpy(s_seedfx_catalog, entries, count * sizeof(entries[0]));
+    s_seedfx_catalog_count = count;
+    seedfx_add_routing_catalog(s_seedfx_catalog,&s_seedfx_catalog_count);
+    return ESP_OK;
+}
+
+esp_err_t p4_audio_control_load_seedfx_graph(
+    const SeedFxGraphDefinition *graph)
+{
+    if (!seedfx_graph_header_is_valid(graph)
+        || seedfx_graph_crc32(graph) != graph->crc32 || !seedfx_routes_valid(graph))
+        return ESP_ERR_INVALID_ARG;
+    for (uint8_t index = 0; index < graph->node_count; ++index)
+        if (!effect_type_valid(graph->nodes[index].effect_type))
+            return ESP_ERR_NOT_SUPPORTED;
+    __atomic_fetch_add(&s_seedfx_graph_seqlock, 1U, __ATOMIC_ACQ_REL);
+    memcpy(&s_seedfx_graph, graph, sizeof(s_seedfx_graph));
+    for (unsigned n = 0; n < s_seedfx_graph.node_count; ++n) {
+        SeedFxNodeDefinition *node = &s_seedfx_graph.nodes[n];
+        const SeedFxCatalogEntry *fx = effect_info(node->effect_type);
+        if (fx == NULL) continue;
+        for (unsigned p = node->parameter_count; p < fx->parameter_count; ++p)
+            node->parameters[p] = fx->parameters[p].default_value;
+        node->parameter_count = fx->parameter_count;
+    }
+    s_seedfx_graph.crc32 = seedfx_graph_crc32(&s_seedfx_graph);
+    ++s_seedfx_graph_serial;
+    __atomic_fetch_add(&s_seedfx_graph_seqlock, 1U, __ATOMIC_RELEASE);
+    return ESP_OK;
 }

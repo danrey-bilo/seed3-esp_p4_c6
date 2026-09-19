@@ -1,0 +1,51 @@
+{
+  "format": "seedfx-effect",
+  "version": 1,
+  "package_id": "0x00010014",
+  "id": "builtin.noise_gate",
+  "name": "Noise Gate",
+  "processor": "builtin:noise_gate",
+  "effect_type": 20,
+  "category": "dynamics",
+  "audio_ports": {
+    "inputs": 1,
+    "outputs": 1
+  },
+  "color": "#63C57A",
+  "shape": "rectangle",
+  "cpu_percent": {
+    "44100": 0.35,
+    "48000": 0.38,
+    "88200": 0.65,
+    "96000": 0.7
+  },
+  "parameters": [
+    {
+      "id": "threshold",
+      "name": "Threshold",
+      "unit": "dB",
+      "min": -80,
+      "max": -10,
+      "step": 1,
+      "default": -55
+    },
+    {
+      "id": "release",
+      "name": "Release",
+      "unit": "ms",
+      "min": 5,
+      "max": 500,
+      "step": 5,
+      "default": 80
+    },
+    {
+      "id": "attack",
+      "name": "Attack",
+      "unit": "ms",
+      "min": 1,
+      "max": 100,
+      "step": 1,
+      "default": 1
+    }
+  ]
+}

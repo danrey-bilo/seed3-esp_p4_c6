@@ -3,6 +3,8 @@
 #include "per/spi.h"
 #include "per/uart.h"
 #include "spi_audio_protocol.h"
+#include "seedfx_graph.h"
+#include "seed_level_meter.h"
 #include "seed_audio_clock.h"
 #include "stm32h7xx_hal.h"
 
@@ -56,6 +58,8 @@ DmaSlot DMA_BUFFER_MEM_SECTION g_dma_slots[kDmaSlots];
 uint8_t DMA_BUFFER_MEM_SECTION g_uart_rx[64];
 volatile uint32_t g_uart_command = 0U;
 volatile bool g_uart_restart = false;
+SeedFxControlPacket g_seedfx_control_packet;
+volatile bool g_seedfx_control_pending = false;
 IWDG_HandleTypeDef g_watchdog{};
 // NOLOAD SRAM retains a tiny breadcrumb across watchdog resets (not power loss).
 struct RecoveryTrace { uint32_t magic, stage, sequence, audio_frames, fault, pc, lr, address; };
@@ -105,9 +109,15 @@ volatile uint32_t g_playback_channel_mask = SPI_AUDIO_CONTROL_CHANNEL_MASK;
 
 float g_left_phase = 0.0f;
 float g_right_phase = 0.0f;
+float g_graph_input[SPI_AUDIO_CHANNELS][SPI_AUDIO_FRAMES];
+float g_graph_output[SPI_AUDIO_CHANNELS][SPI_AUDIO_FRAMES];
 
 void SendUart(const char* text)
 {
+    if(seed_level_meter_cancel_tx()) {
+        uint8_t delimiter='\n';
+        g_uart.BlockingTransmit(&delimiter,1,20U);
+    }
     g_uart.BlockingTransmit(reinterpret_cast<uint8_t*>(const_cast<char*>(text)),
                             std::strlen(text),
                             20U);
@@ -136,6 +146,7 @@ void UartReceive(uint8_t* data, size_t size, void*, UartHandler::Result result)
 {
     static char command[16];
     static size_t used = 0;
+    static size_t packet_used = 0;
     if(result != UartHandler::Result::OK)
     {
         used = 0;
@@ -144,8 +155,49 @@ void UartReceive(uint8_t* data, size_t size, void*, UartHandler::Result result)
     }
     for(size_t i = 0; i < size; ++i)
     {
-        if(data[i] == '\r') continue;
-        if(data[i] == '\n')
+        const uint8_t byte = data[i];
+        if(packet_used != 0U || (used == 0U && byte == 'S'))
+        {
+            if(__atomic_load_n(&g_seedfx_control_pending, __ATOMIC_ACQUIRE))
+            {
+                packet_used = 0U;
+                continue;
+            }
+            reinterpret_cast<uint8_t*>(&g_seedfx_control_packet)[packet_used++]
+                = byte;
+            if(packet_used <= sizeof(uint32_t))
+            {
+                const uint8_t magic[] = {'S', 'F', 'X', 'C'};
+                if(byte != magic[packet_used - 1U]) packet_used = 0U;
+                continue;
+            }
+            if(packet_used == sizeof(SeedFxControlHeader))
+            {
+                const SeedFxControlHeader& header
+                    = g_seedfx_control_packet.header;
+                if(header.magic != SEEDFX_CONTROL_MAGIC
+                   || header.version != SEEDFX_CONTROL_VERSION
+                   || header.payload_bytes > SEEDFX_CONTROL_MAX_PAYLOAD)
+                {
+                    packet_used = 0U;
+                    continue;
+                }
+            }
+            if(packet_used >= sizeof(SeedFxControlHeader))
+            {
+                const size_t expected = sizeof(SeedFxControlHeader)
+                    + g_seedfx_control_packet.header.payload_bytes;
+                if(packet_used == expected)
+                {
+                    __atomic_store_n(&g_seedfx_control_pending, true,
+                                     __ATOMIC_RELEASE);
+                    packet_used = 0U;
+                }
+            }
+            continue;
+        }
+        if(byte == '\r') continue;
+        if(byte == '\n')
         {
             command[used] = 0;
             if(!std::strcmp(command, "@BOOT")) __atomic_store_n(&g_uart_command, 1U, __ATOMIC_RELEASE);
@@ -153,8 +205,73 @@ void UartReceive(uint8_t* data, size_t size, void*, UartHandler::Result result)
             if(!std::strcmp(command, "@STATS")) __atomic_store_n(&g_uart_command, 3U, __ATOMIC_RELEASE);
             used = 0;
         }
-        else if(used + 1 < sizeof(command)) command[used++] = static_cast<char>(data[i]);
+        else if(used + 1 < sizeof(command)) command[used++] = static_cast<char>(byte);
         else used = 0;
+    }
+}
+
+void ProcessSeedFxControl()
+{
+    if(!__atomic_load_n(&g_seedfx_control_pending, __ATOMIC_ACQUIRE)) return;
+    const SeedFxControlHeader header = g_seedfx_control_packet.header;
+    SeedFxGraphResult result = SeedFxGraphResult::InvalidHeader;
+    if(seedfx_crc32(g_seedfx_control_packet.payload, header.payload_bytes)
+       != header.payload_crc32)
+    {
+        result = SeedFxGraphResult::InvalidCrc;
+    }
+    else if(header.command == SEEDFX_COMMAND_GRAPH
+            && header.payload_bytes == sizeof(SeedFxGraphDefinition))
+    {
+        const auto* graph = reinterpret_cast<const SeedFxGraphDefinition*>(
+            g_seedfx_control_packet.payload);
+        result = seedfx_graph_stage(*graph);
+    }
+    else if(header.command == SEEDFX_COMMAND_CACHE_BEGIN
+            && header.payload_bytes == sizeof(SeedFxCacheBegin))
+    {
+        const auto* begin = reinterpret_cast<const SeedFxCacheBegin*>(
+            g_seedfx_control_packet.payload);
+        result = seedfx_cache_begin(begin->package_id, begin->total_bytes,
+                                    begin->content_crc32);
+    }
+    else if(header.command == SEEDFX_COMMAND_CACHE_CHUNK
+            && header.payload_bytes >= offsetof(SeedFxCacheChunk, data))
+    {
+        const auto* chunk = reinterpret_cast<const SeedFxCacheChunk*>(
+            g_seedfx_control_packet.payload);
+        const size_t prefix = offsetof(SeedFxCacheChunk, data);
+        result = chunk->data_bytes <= SEEDFX_CACHE_CHUNK_BYTES
+                     && header.payload_bytes == prefix + chunk->data_bytes
+            ? seedfx_cache_write(chunk->package_id, chunk->offset,
+                                 chunk->data, chunk->data_bytes)
+            : SeedFxGraphResult::CacheBounds;
+    }
+    else if(header.command == SEEDFX_COMMAND_CACHE_END
+            && header.payload_bytes == sizeof(SeedFxCacheEnd))
+    {
+        const auto* end = reinterpret_cast<const SeedFxCacheEnd*>(
+            g_seedfx_control_packet.payload);
+        result = seedfx_cache_end(end->package_id);
+    }
+    else if(header.command == SEEDFX_COMMAND_CACHE_CLEAR
+            && header.payload_bytes == 0U)
+    {
+        seedfx_cache_clear();
+        result = SeedFxGraphResult::Ok;
+    }
+    __atomic_store_n(&g_seedfx_control_pending, false, __ATOMIC_RELEASE);
+
+    /* A blocking diagnostic acknowledgement is safe in LOCAL. During live
+     * USB/SPI audio P4 observes the revision through its own graph model and
+     * no UART formatting is allowed to delay completion-driven SPI rearm. */
+    if(__atomic_load_n(&g_control_only, __ATOMIC_ACQUIRE))
+    {
+        char response[72];
+        std::snprintf(response, sizeof(response), "SEED:SFX seq=%lu %s\r\n",
+                      (unsigned long)header.sequence,
+                      seedfx_graph_result_name(result));
+        SendUart(response);
     }
 }
 
@@ -246,6 +363,18 @@ void AudioCallback(AudioHandle::InputBuffer  input,
     }
     else
     {
+        for(std::size_t channel = 0U; channel < SPI_AUDIO_CHANNELS; ++channel)
+            for(std::size_t frame = 0U; frame < size; ++frame)
+                g_graph_input[channel][frame]
+                    = (capture_mask & (1U << channel)) != 0U
+                          ? input[channel][frame] : 0.0f;
+        const float* graph_input[SPI_AUDIO_CHANNELS]
+            = {g_graph_input[0], g_graph_input[1]};
+        float* graph_output[SPI_AUDIO_CHANNELS]
+            = {g_graph_output[0], g_graph_output[1]};
+        seedfx_graph_process(graph_input, graph_output, size, g_sample_rate,
+                             __atomic_load_n(&g_pedalboard_enabled,
+                                             __ATOMIC_ACQUIRE),playback_mask);
         for(std::size_t frame = 0U; frame < size; ++frame)
         {
             for(std::size_t channel = 0U; channel < SPI_AUDIO_CHANNELS;
@@ -282,8 +411,7 @@ void AudioCallback(AudioHandle::InputBuffer  input,
                             ? LeftAlignedPcm24ToFloat(
                                   playback->samples[sample])
                             : 0.0f;
-                    const float local_input = capture_enabled
-                        ? input[channel][frame] : 0.0f;
+                    const float local_input = g_graph_output[channel][frame];
                     output[channel][frame] = ClampAudio(
                         local_input + usb_playback * kPlaybackMixGain);
                 }
@@ -295,6 +423,7 @@ void AudioCallback(AudioHandle::InputBuffer  input,
         }
     }
 
+    seed_level_meter_capture(input,output,size,capture_mask,playback_mask);
     __atomic_store_n(&g_audio_sample_counter,
                      first_sample + static_cast<uint32_t>(size),
                      __ATOMIC_RELAXED);
@@ -424,7 +553,7 @@ void StartNextTransfer()
     if(g_low_latency)
         flags |= SPI_AUDIO_FLAG_LOW_LATENCY;
     uint16_t status = g_sticky_status;
-    if(g_pedalboard_enabled)
+    if(__atomic_load_n(&g_pedalboard_enabled, __ATOMIC_ACQUIRE))
         status |= SPI_AUDIO_STATUS_PEDALBOARD_ENABLED;
     if(__atomic_load_n(&g_capture_overruns, __ATOMIC_RELAXED) != 0U)
     {
@@ -562,8 +691,10 @@ void FinishTransfer()
     }
     g_expected_rx_sequence = rx.header.sequence + 1U;
     g_have_rx_sequence = true;
-    g_pedalboard_enabled
-        = (rx.header.flags & SPI_AUDIO_FLAG_PEDALBOARD_ENABLED) != 0U;
+    __atomic_store_n(
+        &g_pedalboard_enabled,
+        (rx.header.flags & SPI_AUDIO_FLAG_PEDALBOARD_ENABLED) != 0U,
+        __ATOMIC_RELEASE);
     const bool requested_control_only
         = (rx.header.flags & SPI_AUDIO_FLAG_CONTROL_ONLY) != 0U;
     const bool requested_low_latency
@@ -673,6 +804,7 @@ static void InstallRecoveryVectors()
 int main(void)
 {
     g_seed.Init();
+    seedfx_graph_init();
     InstallRecoveryVectors();
     // ~2 s from the independent LSI clock; refresh only in foreground.
     // A wedged DMA/HAL/IRQ cannot keep the board stuck indefinitely.
@@ -755,6 +887,7 @@ int main(void)
                != UartHandler::Result::OK) Recover("SEED:UART_RECOVER\r\n");
         }
         const uint32_t command = __atomic_exchange_n(&g_uart_command, 0U, __ATOMIC_ACQ_REL);
+        ProcessSeedFxControl();
         if(command == 1U)
         {
             g_ready.Write(false);
@@ -767,18 +900,26 @@ int main(void)
         {
             // P4 only requests this with both USB streams closed. Blocking
             // UART formatting/transmit must not disturb an active audio test.
-            char report[192];
+            char report[288];
             const bool local = __atomic_load_n(
                 &g_control_only, __ATOMIC_ACQUIRE);
+            SeedFxGraphStats graph_stats{};
+            seedfx_graph_get_stats(graph_stats);
             std::snprintf(report, sizeof(report),
-                "SEED:CPU rate=%lu mode=%s frames=%u busy_permille=%lu audio_permille=%lu capture_overruns=%lu spi_errors=%lu\r\n",
+                "SEED:CPU rate=%lu mode=%s frames=%u busy_permille=%lu audio_permille=%lu capture_overruns=%lu spi_errors=%lu graph=%lu/%lu cache=%lu/%lu commits=%lu rejects=%lu\r\n",
                 (unsigned long)g_sample_rate,
                 local ? "LOCAL" : (g_low_latency ? "LOW" : "BALANCED"),
                 (unsigned)(local ? SPI_AUDIO_FRAMES : g_spi_frames),
                 (unsigned long)g_cpu_permille,
                 (unsigned long)g_audio_permille,
                 (unsigned long)g_capture_overruns,
-                (unsigned long)g_spi_start_errors);
+                (unsigned long)g_spi_start_errors,
+                (unsigned long)graph_stats.active_revision,
+                (unsigned long)graph_stats.active_nodes,
+                (unsigned long)graph_stats.cache_bytes_used,
+                (unsigned long)graph_stats.cache_capacity,
+                (unsigned long)graph_stats.graph_commits,
+                (unsigned long)graph_stats.graph_rejects);
             SendUart(report);
         }
         if(__atomic_load_n(&g_dma_active, __ATOMIC_ACQUIRE)
@@ -796,6 +937,7 @@ int main(void)
         }
         Trace(9);
         const uint32_t now_ms = System::GetNow();
+        seed_level_meter_poll(now_ms);
         if(now_ms - g_window_ms >= 1000U)
         {
             const uint32_t primask = __get_PRIMASK();

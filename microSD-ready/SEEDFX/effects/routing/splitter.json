@@ -1,0 +1,23 @@
+{
+  "format": "seedfx-effect",
+  "version": 1,
+  "package_id": "0x00010029",
+  "id": "builtin.splitter",
+  "name": "Splitter",
+  "processor": "builtin:splitter",
+  "effect_type": 41,
+  "category": "routing",
+  "audio_ports": {
+    "inputs": 1,
+    "outputs": 2
+  },
+  "color": "#63C9FF",
+  "shape": "rectangle",
+  "cpu_percent": {
+    "44100": 0.03,
+    "48000": 0.03,
+    "88200": 0.05,
+    "96000": 0.06
+  },
+  "parameters": []
+}

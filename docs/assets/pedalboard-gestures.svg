@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="410" viewBox="0 0 1200 410" role="img" aria-labelledby="title desc">
+  <title id="title">Direct pedalboard patching</title>
+  <desc id="desc">Tap a source or destination socket to select it. Tap a free opposite socket to connect. To unplug, select a connected socket then tap empty board space. Occupied sockets cancel without replacing wires.</desc>
+  <defs>
+    <marker id="tip" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#56e4ab"/></marker>
+  </defs>
+  <rect width="1200" height="410" rx="18" fill="#081321"/>
+  <g font-family="Segoe UI, Arial, sans-serif">
+    <text x="32" y="45" font-size="24" font-weight="700" fill="#f2f7ff">PATCH WITH TWO TAPS</text>
+    <text x="1168" y="44" font-size="16" text-anchor="end" fill="#9cafc4">Start from either end · no connection lists</text>
+    <g fill="#102232" stroke="#2a4257"><rect x="24" y="70" width="370" height="262" rx="12"/><rect x="415" y="70" width="370" height="262" rx="12"/><rect x="806" y="70" width="370" height="262" rx="12"/></g>
+    <g fill="#edf5ff" font-size="19" font-weight="600">
+      <text x="44" y="104">1  SELECT</text><text x="435" y="104">2  CONNECT</text><text x="826" y="104">OR  UNPLUG</text>
+    </g>
+    <rect x="70" y="128" width="154" height="118" rx="12" fill="#213a50" stroke="#ffffff" stroke-width="3"/>
+    <circle cx="147" cy="149" r="5" fill="#56e4ab"/>
+    <text x="147" y="182" text-anchor="middle" font-size="19" fill="#f4f8fe">PEDAL</text>
+    <rect x="198" y="188" width="42" height="42" rx="10" fill="#28465d" stroke="#ffffff" stroke-width="3"/>
+    <text x="219" y="215" text-anchor="middle" font-size="17" fill="#fff">1 &gt;</text>
+    <circle cx="267" cy="221" r="18" fill="#e4eaf2" fill-opacity=".25" stroke="#bccadb" stroke-dasharray="3 3"/>
+    <path d="M253 211L240 208" stroke="#dce5f2" stroke-width="2"/>
+    <text x="44" y="278" font-size="17" fill="#c0cede">Tap a socket.</text>
+    <text x="44" y="303" font-size="17" fill="#c0cede">Its pedal and border light up.</text>
+    <rect x="446" y="140" width="105" height="98" rx="10" fill="#172d3d" stroke="#56e4ab" stroke-width="2"/>
+    <rect x="650" y="140" width="105" height="98" rx="10" fill="#172d3d" stroke="#59bdfc" stroke-width="2"/>
+    <text x="497" y="169" text-anchor="middle" font-size="16" fill="#e9f4ff">SOURCE</text>
+    <text x="702" y="169" text-anchor="middle" font-size="16" fill="#e9f4ff">TARGET</text>
+    <rect x="525" y="184" width="36" height="36" rx="8" fill="#213c43" stroke="#56e4ab" stroke-width="2"/>
+    <rect x="640" y="184" width="36" height="36" rx="8" fill="#213c43" stroke="#56e4ab" stroke-width="2"/>
+    <path d="M563 202H637" stroke="#56e4ab" stroke-width="4" marker-end="url(#tip)"/>
+    <text x="435" y="278" font-size="17" fill="#c0cede">Tap a free opposite socket.</text>
+    <text x="435" y="303" font-size="17" fill="#c0cede">Occupied? Nothing is replaced.</text>
+    <rect x="832" y="155" width="74" height="78" rx="10" fill="#213a50" stroke="#ffffff" stroke-width="3"/>
+    <rect x="887" y="177" width="36" height="36" rx="8" fill="#28465d" stroke="#ffffff" stroke-width="3"/>
+    <path d="M925 195H971" stroke="#56e4ab" stroke-width="4" stroke-dasharray="5 6"/>
+    <rect x="994" y="138" width="146" height="98" rx="10" fill="#0b1928" stroke="#5a7188" stroke-dasharray="5 5"/>
+    <circle cx="1067" cy="178" r="17" fill="#e4eaf2" fill-opacity=".25" stroke="#bccadb"/>
+    <text x="1067" y="219" text-anchor="middle" font-size="15" fill="#a9bdd1">EMPTY SPACE</text>
+    <text x="826" y="278" font-size="17" fill="#c0cede">Select a connected socket.</text>
+    <text x="826" y="303" font-size="17" fill="#c0cede">Tap empty space to remove its wire.</text>
+    <text x="32" y="373" font-size="18" fill="#90abc1">One wire per socket in the editor. Use Splitter for branches and Mixer to join them.</text>
+  </g>
+</svg>

@@ -1,0 +1,42 @@
+{
+  "format": "seedfx-effect",
+  "version": 1,
+  "package_id": "0x00010002",
+  "id": "builtin.gain",
+  "name": "Gain",
+  "processor": "builtin:gain",
+  "effect_type": 2,
+  "category": "utility",
+  "audio_ports": {
+    "inputs": 2,
+    "outputs": 2
+  },
+  "color": "#42E8BD",
+  "shape": "rounded",
+  "cpu_percent": {
+    "44100": 0.07,
+    "48000": 0.08,
+    "88200": 0.14,
+    "96000": 0.15
+  },
+  "parameters": [
+    {
+      "id": "gain_db",
+      "name": "Gain",
+      "unit": "dB",
+      "min": -60,
+      "max": 18,
+      "step": 0.5,
+      "default": 0
+    },
+    {
+      "id": "balance",
+      "name": "Balance",
+      "unit": "%",
+      "min": -1,
+      "max": 1,
+      "step": 0.01,
+      "default": 0
+    }
+  ]
+}

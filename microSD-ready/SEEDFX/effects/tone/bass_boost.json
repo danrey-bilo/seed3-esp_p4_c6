@@ -1,0 +1,42 @@
+{
+  "format": "seedfx-effect",
+  "version": 1,
+  "package_id": "0x00010010",
+  "id": "builtin.bass_boost",
+  "name": "Bass Boost",
+  "processor": "builtin:bass_boost",
+  "effect_type": 16,
+  "category": "tone",
+  "audio_ports": {
+    "inputs": 1,
+    "outputs": 1
+  },
+  "color": "#4FE0C1",
+  "shape": "rounded",
+  "cpu_percent": {
+    "44100": 0.39,
+    "48000": 0.42,
+    "88200": 0.72,
+    "96000": 0.77
+  },
+  "parameters": [
+    {
+      "id": "frequency",
+      "name": "Frequency",
+      "unit": "Hz",
+      "min": 60,
+      "max": 500,
+      "step": 5,
+      "default": 180
+    },
+    {
+      "id": "gain",
+      "name": "Boost",
+      "unit": "dB",
+      "min": 0,
+      "max": 18,
+      "step": 0.5,
+      "default": 6
+    }
+  ]
+}

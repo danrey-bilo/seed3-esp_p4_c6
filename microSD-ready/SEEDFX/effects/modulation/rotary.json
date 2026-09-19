@@ -1,0 +1,51 @@
+{
+  "format": "seedfx-effect",
+  "version": 1,
+  "package_id": "0x00010028",
+  "id": "builtin.rotary",
+  "name": "Rotary",
+  "processor": "builtin:rotary",
+  "effect_type": 40,
+  "category": "modulation",
+  "audio_ports": {
+    "inputs": 1,
+    "outputs": 2
+  },
+  "color": "#EE86B7",
+  "shape": "pill",
+  "cpu_percent": {
+    "44100": 1.01,
+    "48000": 1.1,
+    "88200": 1.89,
+    "96000": 2.02
+  },
+  "parameters": [
+    {
+      "id": "rate",
+      "name": "Rate",
+      "unit": "Hz",
+      "min": 0.2,
+      "max": 10,
+      "step": 0.1,
+      "default": 1.2
+    },
+    {
+      "id": "depth",
+      "name": "Depth",
+      "unit": "%",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.7
+    },
+    {
+      "id": "mix",
+      "name": "Mix",
+      "unit": "%",
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.7
+    }
+  ]
+}
