@@ -26,7 +26,7 @@ display and microSD. Local processing keeps running without a PC.
 | Formats | **24-bit packed PCM**, 44.1 / 48 / 88.2 / 96 kHz |
 | Windows driver | Built-in `usbaudio2.sys` |
 | Inter-board audio | SPI mode 0, **20 MHz**, READY handshake, CRC and sequence checks |
-| Pedalboard | 12 active nodes, independent mono paths, Splitter and Mixer |
+| Pedalboard | 5-column snap placement, drag-only grid, up to 12 active nodes, Splitter and Mixer |
 | Effect catalog | 40 DSP effects + 2 routing utilities; up to 4 controls per profile |
 | Display | LVGL 9.5, direct socket patching, knobs, live ADC/DAC meters |
 | Hardware | Daisy Seed3 + ESP32-P4-WIFI6-Touch-LCD-7B, **P4 rev1.x** |
@@ -38,7 +38,7 @@ does **not** advertise 192 kHz.
 
 ## Pedalboard
 
-![The actual LVGL interface rendered on the host, with an example parallel graph and simulated meter values](docs/assets/pedalboard-routing.png)
+![Flat 2D pedalboard: colored uniform cards, free grid placement and fixed input/output meters](docs/assets/pedalboard-grid.png)
 
 *Native LVGL test render — example graph and simulated meter values, not a photo.*
 
@@ -47,19 +47,28 @@ does **not** advertise 192 kHz.
 - **Tap a connected socket, then empty board space** to unplug its wire.
 - An occupied second socket cancels the action. Internal wires have distinct
   colors; **IN1/OUT1 stay green, IN2/OUT2 stay blue**. Parallel tracks do not
-  overlap; dense boards can scroll vertically.
+  overlap; the pedal field scrolls vertically while **physical sockets and meters stay fixed**.
   Use **Splitter** for branches and **Mixer** to combine them.
 - Tap the large **top LED** to toggle a pedal; tap its body for rotary controls.
   Tap **Done** or outside the editor to close it.
-- Hold empty space, choose a **category**, then an effect; uncategorized effects are in **Other**.
-- Hold a pedal for **1 second, then move outside its body** to reposition it.
-  Hold **2 seconds inside its body** for replace, delete or information.
+- Hold empty board space, choose a **category**, then an effect to add it there;
+  uncategorized effects are in **Other**.
+- Hold a pedal for **0.5 seconds, then move outside its body** to reposition it.
+  A white outline shows when it is ready. Hold **1 second inside its body**
+  for replace, delete or information.
   Finger movement within the card does not start a drag.
-- Cabinet cards are twice as wide as a standard pedal. No instance numbers or separate bypass buttons.
+  Drop into an **empty cell**, including lower rows; occupied cells swap pedals if both fit.
+  The target is highlighted, and holding near the top/bottom edge scrolls the field.
+- The **5-column grid is hidden at rest**. It appears only while dragging,
+  through the last occupied row plus **one extra row** below, not the whole field.
+- Cards share a rounded rectangular shape: **104×198**, or **264×198** for
+  a two-cell Cabinet Sim. Wide cards reserve two neighboring cells. Color-tinted
+  fills by effect type. Flat 2D styling: no shadows, textures or idle animations.
+  No instance numbers or separate bypass buttons. Routing does not change when a card moves.
 - Hold **AUDIO SETTINGS** for the shared sample rate and channel switches.
   Disabled physical channels disappear from the board.
 - Vertical meters beside the physical sockets show **Seed3 ADC input and final
-  DAC output**, including local operation with no USB stream.
+  DAC output**, including local operation with no USB stream and while the field scrolls.
 
 ![Direct patching: select, connect, or unplug on empty space](docs/assets/pedalboard-gestures.svg)
 
@@ -80,7 +89,8 @@ Credentials are saved on the device, never in this repository.
 
 The routing graph is applied between audio blocks. Disconnected branches are
 not processed. Current screen edits live in RAM; restarting reloads
-`AUTORUN.SFG`. Saving a preset from the touchscreen is not implemented yet.
+`AUTORUN.SFG` and resets visual placement. The 40 placement cells do not raise the
+12-active-node DSP limit. Saving a preset from the touchscreen is not implemented yet.
 
 ## Wiring
 

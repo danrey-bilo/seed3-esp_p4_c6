@@ -1,5 +1,10 @@
 # Direct patching verification — 19 September 2026
 
+This report records the earlier 1/2-second gesture image. The subsequent
+[500/1000 ms gesture update](PEDAL_GESTURE_TIMING.md) has its own image hashes
+and verification notes; it does not supersede the audio qualification limits.
+The latest UI snapshot is documented in the [free-grid report](PEDALBOARD_GRID_TEST.md).
+
 ## Build and native tests
 
 ESP-IDF 5.5.5 / ESP32-P4 rev1.x and the Seed3 toolchain builds complete.

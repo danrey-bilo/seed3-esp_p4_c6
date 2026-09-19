@@ -10,6 +10,9 @@ $captures = @{
     'categories.bmp' = 'pedalboard-categories.png'
     'wifi-connected.bmp' = 'wifi-settings.png'
     'wifi-password.bmp' = 'wifi-password.png'
+    'grid-placement.bmp' = 'pedalboard-grid.png'
+    'grid-scrolled.bmp' = 'pedalboard-grid-scrolled.png'
+    'grid-drag.bmp' = 'pedalboard-grid-drag.png'
 }
 foreach ($name in $captures.Keys) {
     $source = Join-Path $repo ('.tmp\host-ui\' + $name)

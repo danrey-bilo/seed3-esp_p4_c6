@@ -123,41 +123,53 @@ void pedal_knob_create(pedal_knob_t *k, lv_obj_t *parent, int x, int y,
     lv_obj_add_event_cb(k->arc, knob_event, LV_EVENT_ALL, k);
 }
 
-static void line(lv_obj_t *parent, const lv_point_precise_t *points,
-                  unsigned count, uint32_t rgb)
+static lv_obj_t *cable_line(lv_obj_t *parent)
 {
-    lv_obj_t *object = lv_line_create(parent);
-    lv_line_set_points(object, points, count);
-    lv_obj_set_style_line_width(object, 3, 0);
-    lv_obj_set_style_line_rounded(object, true, 0);
-    lv_obj_set_style_line_color(object, lv_color_hex(rgb), 0);
-    lv_obj_clear_flag(object, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_t *object=lv_line_create(parent);
+    lv_obj_set_style_line_width(object,3,0);
+    lv_obj_set_style_line_rounded(object,true,0);
+    lv_obj_clear_flag(object,LV_OBJ_FLAG_CLICKABLE);
+    return object;
 }
-
-void pedal_cable_create(lv_obj_t *parent, pedal_cable_t *s,
-                        const lv_point_precise_t *points, unsigned count,
-                        uint32_t rgb, uint32_t end_rgb)
+void pedal_cable_update(pedal_cable_t *s,const lv_point_precise_t *points,
+                        unsigned count,uint32_t rgb,uint32_t end_rgb)
 {
-    if (count < 2 || count > 8) return;
-    memcpy(s->path, points, count * sizeof(*points));
-    if(rgb!=end_rgb && count==6) {
-        /* A direct physical cross-patch preserves both endpoint identities:
-         * IN1 -> OUT2 is green at IN1, blue at OUT2, changing at mid-span. */
-        memmove(s->path+4,s->path+3,3*sizeof(*points));
-        s->path[3]=(lv_point_precise_t){(points[2].x+points[3].x)/2,points[2].y};
-        line(parent,s->path,4,rgb);
-        line(parent,s->path+3,4,end_rgb);
-    } else line(parent, s->path, count, rgb);
-    const lv_point_precise_t end = points[count - 1];
-    const lv_point_precise_t prev = points[count - 2];
-    const float dx = end.x - prev.x, dy = end.y - prev.y;
-    const float length = sqrtf(dx * dx + dy * dy);
-    if (length < 1) return;
-    const float ux = dx / length, uy = dy / length;
-    s->arrow[0] = (lv_point_precise_t){end.x - 9 * ux + 5 * uy,
-                                      end.y - 9 * uy - 5 * ux};
-    s->arrow[1] = end;
-    s->arrow[2] = (lv_point_precise_t){end.x - 9 * ux - 5 * uy,
-                                      end.y - 9 * uy + 5 * ux};
-    line(parent, s->arrow, 3, end_rgb);
+    if(!s->body) return;
+    lv_obj_invalidate(s->body);lv_obj_invalidate(s->tail);lv_obj_invalidate(s->arrow_line);
+    lv_obj_add_flag(s->tail,LV_OBJ_FLAG_HIDDEN);
+    if(count<2 || count>8) {
+        lv_obj_add_flag(s->body,LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(s->arrow_line,LV_OBJ_FLAG_HIDDEN);return;
+    }
+    lv_obj_remove_flag(s->body,LV_OBJ_FLAG_HIDDEN);
+    lv_obj_remove_flag(s->arrow_line,LV_OBJ_FLAG_HIDDEN);
+    memcpy(s->path,points,count*sizeof(*points));
+    lv_obj_set_style_line_color(s->body,lv_color_hex(rgb),0);
+    lv_obj_set_style_line_color(s->tail,lv_color_hex(end_rgb),0);
+    lv_obj_set_style_line_color(s->arrow_line,lv_color_hex(end_rgb),0);
+    if(rgb!=end_rgb) {
+        const unsigned split=(count-1)/2+1;
+        memmove(s->path+split+1,s->path+split,(count-split)*sizeof(*points));
+        s->path[split]=(lv_point_precise_t){(points[split-1].x+points[split].x)/2,
+                                           (points[split-1].y+points[split].y)/2};
+        lv_line_set_points(s->body,s->path,split+1);
+        lv_line_set_points(s->tail,s->path+split,count+1-split);
+        lv_obj_remove_flag(s->tail,LV_OBJ_FLAG_HIDDEN);
+    } else lv_line_set_points(s->body,s->path,count);
+    const lv_point_precise_t end=points[count-1],prev=points[count-2];
+    const float dx=end.x-prev.x,dy=end.y-prev.y,length=sqrtf(dx*dx+dy*dy);
+    if(length<1) {lv_obj_add_flag(s->arrow_line,LV_OBJ_FLAG_HIDDEN);return;}
+    const float ux=dx/length,uy=dy/length;
+    s->arrow[0]=(lv_point_precise_t){end.x-9*ux+5*uy,end.y-9*uy-5*ux};
+    s->arrow[1]=end;
+    s->arrow[2]=(lv_point_precise_t){end.x-9*ux-5*uy,end.y-9*uy+5*ux};
+    lv_line_set_points(s->arrow_line,s->arrow,3);
+}
+void pedal_cable_create(lv_obj_t *parent,pedal_cable_t *s,
+                        const lv_point_precise_t *points,unsigned count,
+                        uint32_t rgb,uint32_t end_rgb)
+{
+    memset(s,0,sizeof(*s));
+    s->body=cable_line(parent);s->tail=cable_line(parent);s->arrow_line=cable_line(parent);
+    pedal_cable_update(s,points,count,rgb,end_rgb);
 }

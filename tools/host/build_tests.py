@@ -27,14 +27,14 @@ def main():
            '-DLV_FONT_MONTSERRAT_16=1','-DLV_FONT_MONTSERRAT_20=1',
            '-DLV_FONT_MONTSERRAT_28=1','-DLV_FONT_MONTSERRAT_48=1']
     for p in includes: flags += ['-I',str(p)]
-    sources=list((LV/'src').rglob('*.c'))+[DASH/'pedalboard_widgets.c',DASH/'pedal_patch.c',DASH/'pedal_layout.c',ROOT/'tools/host/test_pedalboard.c']
+    sources=list((LV/'src').rglob('*.c'))+[DASH/'pedalboard_widgets.c',DASH/'pedal_patch.c',DASH/'pedal_layout.c',DASH/'pedal_grid.c',ROOT/'tools/host/test_pedalboard.c']
     header_freshness=max(p.stat().st_mtime for directory in
         (ROOT/'tools/host/include',ROOT/'protocol',DASH) for p in directory.rglob('*.h'))
     def compile_one(source):
         target=OUT/(str(source.relative_to(ROOT)).replace('\\','_').replace('/','_')+'.obj')
         freshness=max(source.stat().st_mtime,Path(__file__).stat().st_mtime,
             max((DASH/'audio_dashboard.c').stat().st_mtime,(DASH/'wifi_view.c').stat().st_mtime) if source.name=='test_pedalboard.c' else 0,
-            header_freshness if source.name in ('test_pedalboard.c','pedalboard_widgets.c','pedal_patch.c','pedal_layout.c') else 0)
+            header_freshness if source.name in ('test_pedalboard.c','pedalboard_widgets.c','pedal_patch.c','pedal_layout.c','pedal_grid.c') else 0)
         if not target.exists() or target.stat().st_mtime<freshness:
             result=subprocess.run([str(ZIG),'cc',*flags,'-c',str(source),'-o',str(target)],capture_output=True,text=True)
             if result.returncode: raise RuntimeError(result.stdout+result.stderr)

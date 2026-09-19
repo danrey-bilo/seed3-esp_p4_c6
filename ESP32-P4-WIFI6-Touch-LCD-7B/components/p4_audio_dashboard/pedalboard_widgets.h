@@ -28,9 +28,12 @@ void pedal_knob_flush(pedal_knob_t *knob);
 
 /* Storage must outlive the LVGL objects. Two polylines: cable and arrowhead. */
 typedef struct {
-    lv_point_precise_t path[8];
+    lv_point_precise_t path[10];
     lv_point_precise_t arrow[3];
+    lv_obj_t *body,*tail,*arrow_line;
 } pedal_cable_t;
 void pedal_cable_create(lv_obj_t *parent, pedal_cable_t *storage,
                         const lv_point_precise_t *points, unsigned count,
                         uint32_t color, uint32_t end_color);
+void pedal_cable_update(pedal_cable_t *storage,const lv_point_precise_t *points,
+                        unsigned count,uint32_t color,uint32_t end_color);

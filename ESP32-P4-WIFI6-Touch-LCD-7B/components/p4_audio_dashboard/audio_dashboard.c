@@ -10,6 +10,7 @@
 #include "esp_log.h"
 #ifdef ESP_PLATFORM
 #include "esp_heap_caps.h"
+#include "esp_timer.h"
 #endif
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -190,11 +191,14 @@ static SeedFxEdgeDefinition s_ui_edges[SEEDFX_MAX_EDGES]={{0,0,1,0,0,0},{0,0,1,1
 static uint8_t s_ui_edge_count=2;
 static lv_timer_t *s_render_test_timer;
 static uint8_t s_graph_target_index = UINT8_MAX;
-static uint16_t s_visual_order[SEEDFX_MAX_NODES];
-static uint8_t s_visual_slot[SEEDFX_MAX_NODES];
+static pedal_grid_t s_pedal_grid;
+static int s_add_cell=-1;
+static bool s_rendering_pedals;
 static pedal_gesture_t s_node_gesture;
 static unsigned s_drag_index;
 static lv_obj_t *s_drag_preview;
+static lv_obj_t *s_drop_preview;
+static lv_obj_t *s_grid_hint_layer;
 static lv_timer_t *s_drag_timer;
 static lv_indev_t *s_drag_input;
 static void cancel_node_gesture(void);
@@ -736,7 +740,7 @@ static void create_compact_io_panel(lv_obj_t *parent,
         lv_bar_set_range(view->level[ch],0,100);
         lv_obj_set_style_bg_color(view->level[ch],color(0x203145),LV_PART_MAIN);
         lv_obj_set_style_bg_opa(view->level[ch],LV_OPA_COVER,LV_PART_MAIN);
-        lv_obj_set_style_bg_color(view->level[ch],color(0x48e0a8),LV_PART_INDICATOR);
+        lv_obj_set_style_bg_color(view->level[ch],color(pedal_physical_color(ch)),LV_PART_INDICATOR);
         lv_obj_set_style_radius(view->level[ch],3,LV_PART_MAIN);
         lv_obj_set_style_radius(view->level[ch],3,LV_PART_INDICATOR);
         lv_obj_clear_flag(view->level[ch],LV_OBJ_FLAG_CLICKABLE);
@@ -877,11 +881,15 @@ static const SeedFxCatalogEntry *effect_info(uint16_t type)
     return &s_effect_catalog[0];
 }
 
-static int effect_radius(const SeedFxCatalogEntry *effect)
+static uint32_t effect_fill(const SeedFxCatalogEntry *effect,bool selected)
 {
-    if (effect->shape == SEEDFX_SHAPE_PILL) return 40;
-    if (effect->shape == SEEDFX_SHAPE_ROUNDED) return 16;
-    return 6;
+    const uint32_t background=0x122033;
+    const unsigned mix=selected?112:80;
+    uint32_t rgb=0;
+    for(unsigned shift=0;shift<24;shift+=8)
+        rgb|=((((effect->color_rgb>>shift)&255)*mix
+            +((background>>shift)&255)*(255-mix))/255)<<shift;
+    return rgb;
 }
 
 static void close_graph_overlays(void)
@@ -938,83 +946,70 @@ static void rebuild_ui_edges(void)
 }
 
 static pedal_layout_t s_cable_layout;
-static int node_x(unsigned index) { return pedal_layout_x(&s_cable_layout,s_visual_slot[index]); }
-static int node_y(unsigned index) { return pedal_layout_y(&s_cable_layout,s_visual_slot[index]); }
+static int node_x(unsigned index) { return pedal_layout_x(&s_cable_layout,index); }
+static int node_y(unsigned index) { return pedal_layout_y(&s_cable_layout,index); }
 
-static void order_visual_graph(SeedFxGraphDefinition *g)
-{
-    SeedFxNodeDefinition ordered[SEEDFX_MAX_NODES];
-    bool used[SEEDFX_MAX_NODES]={0}; unsigned count=0;
-    for(unsigned slot=0;slot<SEEDFX_MAX_NODES;++slot)
-        for(unsigned n=0;n<g->node_count;++n)
-            if(!used[n] && s_visual_order[slot]==g->nodes[n].id) {
-                ordered[count++]=g->nodes[n];used[n]=true;break;
-            }
-    for(unsigned n=0;n<g->node_count;++n) if(!used[n]) ordered[count++]=g->nodes[n];
-    memset(s_visual_order,0,sizeof(s_visual_order));
-    for(unsigned slot=0;slot<count;++slot) {
-        s_visual_order[slot]=ordered[slot].id;
-        for(unsigned n=0;n<g->node_count;++n)
-            if(g->nodes[n].id==ordered[slot].id) s_visual_slot[n]=slot;
-    }
-    memcpy(g->nodes,ordered,count*sizeof(ordered[0]));
-}
-
-static void render_cables(void)
+static void render_cables(bool create)
 {
     SeedFxGraphDefinition graph; ui_graph(&graph);
     pedal_colors_sync(&s_route_colors,&graph);
-    order_visual_graph(&graph);
+    pedal_grid_sync(&s_pedal_grid,&graph);
     const uint8_t inputs=s_pedal_io[0].channel_enabled[0]|(s_pedal_io[0].channel_enabled[1]<<1);
     const uint8_t outputs=s_pedal_io[1].channel_enabled[0]|(s_pedal_io[1].channel_enabled[1]<<1);
-    pedal_layout_build(&s_cable_layout,&graph,inputs,outputs);
-    lv_obj_set_height(s_graph_node_layer,s_cable_layout.canvas_height);
+    if(create) pedal_layout_build_grid(&s_cable_layout,&graph,&s_pedal_grid,inputs,outputs,
+        lv_obj_get_scroll_y(s_graph_workspace));
+    else pedal_layout_scroll(&s_cable_layout,&graph,inputs,outputs,lv_obj_get_scroll_y(s_graph_workspace));
     for(unsigned e=0;e<graph.edge_count;++e) {
         const pedal_route_t *route=&s_cable_layout.routes[e];
-        if(!route->count) continue;
-        lv_point_precise_t points[6];
+        lv_point_precise_t points[8];
         for(unsigned p=0;p<route->count;++p)
             points[p]=(lv_point_precise_t){route->points[p].x,route->points[p].y};
         const SeedFxEdgeDefinition *r=&graph.edges[e];
         const uint32_t rgb=pedal_color_for(&s_route_colors,r);
         const uint32_t end_rgb=!r->destination_id?pedal_physical_color(r->destination_port):rgb;
-        pedal_cable_create(s_graph_node_layer,&s_cables[e],points,route->count,rgb,end_rgb);
+        if(create) pedal_cable_create(s_graph_node_layer,&s_cables[e],points,route->count,rgb,end_rgb);
+        else pedal_cable_update(&s_cables[e],points,route->count,rgb,end_rgb);
     }
+}
+static void board_scroll_event(lv_event_t *event)
+{
+    if(!s_rendering_pedals && s_graph_node_layer
+        && lv_event_get_target(event)==s_graph_workspace) render_cables(false);
 }
 static void render_pedal_nodes(void)
 {
     if (s_graph_node_layer == NULL) return;
     cancel_node_gesture();
+    s_rendering_pedals=true;
     lv_obj_clean(s_graph_node_layer);
     memset(s_node_cards,0,sizeof(s_node_cards));
     memset(s_node_jacks,0,sizeof(s_node_jacks));
-    render_cables();
-    create_compact_io_panel(s_graph_node_layer, &s_pedal_io[0], 0);
-    create_compact_io_panel(s_graph_node_layer, &s_pedal_io[1], 952);
-    if (s_pedal_node_count == 0) {
-        make_label(s_graph_node_layer, 342, 224, 340, 30, "YOUR PEDALBOARD",
-                    &lv_font_montserrat_20, 0xc8d4e0, LV_TEXT_ALIGN_CENTER);
-        make_label(s_graph_node_layer, 342, 264, 340, 20, "Hold empty space to add an effect",
-                    &lv_font_montserrat_14, 0x7e93a9, LV_TEXT_ALIGN_CENTER);
-    }
+    memset(s_cables,0,sizeof(s_cables));
+    SeedFxGraphDefinition grid_graph;ui_graph(&grid_graph);pedal_grid_sync(&s_pedal_grid,&grid_graph);
+    lv_obj_set_height(s_graph_node_layer,pedal_grid_canvas_height(&s_pedal_grid,false));
+    lv_obj_update_layout(s_graph_workspace);
+    lv_obj_scroll_to_y(s_graph_workspace,lv_obj_get_scroll_y(s_graph_workspace),LV_ANIM_OFF);
+    render_cables(true);
+    update_pedal_io_summary(&s_pedal_io[0]);update_pedal_io_summary(&s_pedal_io[1]);
     for (unsigned i = 0; i < s_pedal_node_count; ++i) {
         const SeedFxCatalogEntry *fx = effect_info(s_pedal_nodes[i].type);
         const int width=pedal_layout_node_width(fx->effect_type);
-        const bool forward=pedal_layout_forward(&s_cable_layout,s_visual_slot[i]);
+        const bool forward=true;
         lv_obj_t *node = make_panel(s_graph_node_layer, node_x(i), node_y(i),
-                                     width, 210, 0x142333, fx->color_rgb, effect_radius(fx));
+            width,PEDAL_CARD_HEIGHT,effect_fill(fx,false),fx->color_rgb,PEDAL_CARD_RADIUS);
         s_node_cards[i]=node;
         lv_obj_set_style_border_width(node, 2, 0);
         lv_obj_add_flag(node, LV_OBJ_FLAG_CLICKABLE|LV_OBJ_FLAG_PRESS_LOCK);
         lv_obj_add_flag(node, LV_OBJ_FLAG_SCROLL_CHAIN_VER);
         lv_obj_add_event_cb(node, graph_node_pointer_event, LV_EVENT_ALL,
                             (void *)(uintptr_t)(i + 1));
-        lv_obj_t *led = make_panel(node, (width-42)/2, 14, 42, 42,
-            s_pedal_nodes[i].enabled ? 0x48e0a8 : 0xf05b68,
-            s_pedal_nodes[i].enabled ? 0x48e0a8 : 0xf05b68, 21);
+        const uint32_t led_color=s_pedal_nodes[i].enabled?0x48e0a8:0xf05b68;
+        lv_obj_t *led=make_panel(node,(width-42)/2,14,42,42,0x112333,led_color,21);
+        lv_obj_t *lamp=make_panel(led,8,8,24,24,led_color,led_color,12);
+        lv_obj_remove_flag(lamp,LV_OBJ_FLAG_CLICKABLE);
         lv_obj_add_flag(led, LV_OBJ_FLAG_CLICKABLE|LV_OBJ_FLAG_SCROLL_CHAIN_VER);
         lv_obj_add_event_cb(led,board_toggle_event,LV_EVENT_SHORT_CLICKED,(void *)(uintptr_t)i);
-        lv_obj_t *name = make_label(node, 6, 70, width-12, 42, fx->name,
+        lv_obj_t *name = make_label(node, 6, 68, width-12, 36, fx->name,
             strlen(fx->name) >= 10 ? &lv_font_montserrat_12 : &lv_font_montserrat_14,
             0xeaf0f6, LV_TEXT_ALIGN_CENTER);
         lv_label_set_long_mode(name, LV_LABEL_LONG_WRAP);
@@ -1023,7 +1018,7 @@ static void render_pedal_nodes(void)
             const unsigned ports = output_side ? seedfx_output_channels(fx->effect_type)
                                                : seedfx_input_channels(fx->effect_type);
             for (unsigned ch = 0; ch < ports; ++ch) {
-                const int center = ports == 1 ? 172 : 138 + ch * 46;
+                const int center = ports == 1 ? 174 : 128 + ch * 46;
                 lv_obj_t *jack = make_panel(node, side ? width-42 : 0, center-21,
                     40, 42, 0x203346, 0x708090, 10);
                 lv_obj_add_flag(jack, LV_OBJ_FLAG_SCROLL_CHAIN_VER);
@@ -1039,6 +1034,7 @@ static void render_pedal_nodes(void)
         }
     }
     refresh_patch_highlights();
+    s_rendering_pedals=false;
 
 #ifdef ESP_PLATFORM
     ESP_LOGI(TAG, "board nodes=%u heap=%u largest=%u internal=%u stack=%u",
@@ -1053,6 +1049,7 @@ static void render_pedal_nodes(void)
 static struct {
     pedal_node_t nodes[PEDALBOARD_VISIBLE_NODES];
     SeedFxEdgeDefinition edges[SEEDFX_MAX_EDGES];
+    pedal_grid_t grid;
     uint8_t node_count, edge_count;
     dashboard_page_t page;
     unsigned step;
@@ -1066,6 +1063,7 @@ static void render_test_tick(lv_timer_t *timer)
         memcpy(s_ui_edges, s_render_test.edges, sizeof(s_ui_edges));
         s_pedal_node_count = s_render_test.node_count;
         s_ui_edge_count = s_render_test.edge_count;
+        s_pedal_grid=s_render_test.grid;
         lv_obj_delete(s_render_test.shield);
         render_pedal_nodes();
         set_active_page(s_render_test.page);
@@ -1090,6 +1088,7 @@ esp_err_t audio_dashboard_test_pedalboard(void)
     }
     memcpy(s_render_test.nodes, s_pedal_nodes, sizeof(s_pedal_nodes));
     memcpy(s_render_test.edges, s_ui_edges, sizeof(s_ui_edges));
+    s_render_test.grid=s_pedal_grid;
     s_render_test.node_count = s_pedal_node_count;
     s_render_test.edge_count = s_ui_edge_count;
     s_render_test.page = s_active_page;
@@ -1153,6 +1152,7 @@ static void refresh_effect_selector(void)
 static void open_effect_selector(uint8_t replace_index)
 {
     if (s_effect_selector == NULL) return;
+    s_add_cell=-1;
     s_graph_target_index = replace_index;
     s_effect_category=-1;
     refresh_effect_selector();
@@ -1160,17 +1160,64 @@ static void open_effect_selector(uint8_t replace_index)
     lv_obj_move_foreground(s_effect_selector);
 }
 
+static int drop_cell_for_point(lv_point_t point)
+{
+    lv_area_t viewport,canvas;
+    lv_obj_get_coords(s_graph_workspace,&viewport);
+    if(point.x<viewport.x1 || point.x>viewport.x2 || point.y<viewport.y1 || point.y>viewport.y2) return -1;
+    lv_obj_get_coords(s_graph_node_layer,&canvas);
+    const int cell=pedal_grid_hit(point.x-canvas.x1,point.y-canvas.y1);
+    const unsigned rows=pedal_grid_used_rows(&s_pedal_grid)+(s_grid_hint_layer?1:0);
+    return cell>=0 && cell<(int)(rows*PEDAL_GRID_COLUMNS)?cell:-1;
+}
 static void graph_workspace_long_press_event(lv_event_t *event)
 {
     (void)event;
-    if (s_pedal_node_count < PEDALBOARD_VISIBLE_NODES)
+    if (s_pedal_node_count < PEDALBOARD_VISIBLE_NODES) {
         open_effect_selector(UINT8_MAX);
+        lv_indev_t *input=lv_indev_active();
+        if(input) {
+            lv_point_t point;lv_indev_get_point(input,&point);
+            int cell=drop_cell_for_point(point);
+            if(cell>=0 && !s_pedal_grid.cells[cell]) s_add_cell=cell;
+        }
+    }
+}
+
+/* Measure hold durations from the monotonic hardware clock, not the number
+ * of delivered UI ticks. LVGL still owns all touch/object/timer operations. */
+static uint32_t ui_wall_ms(void)
+{
+#ifdef ESP_PLATFORM
+    return (uint32_t)(esp_timer_get_time()/1000);
+#else
+    return lv_tick_get();
+#endif
+}
+static uint32_t s_gesture_tick_start;
+static bool s_drag_ready;
+static uint32_t s_clock_probe_wall,s_clock_probe_tick;
+static void clock_probe_timer(lv_timer_t *timer)
+{
+    (void)timer;
+    ESP_LOGI(TAG,"UI clock: wall=%lu ms lvgl=%lu ms",
+        (unsigned long)(ui_wall_ms()-s_clock_probe_wall),
+        (unsigned long)(lv_tick_get()-s_clock_probe_tick));
 }
 
 static void cancel_node_gesture(void)
 {
+    if(s_node_gesture.active && s_node_cards[s_drag_index])
+        lv_obj_set_style_outline_width(s_node_cards[s_drag_index],0,0);
     if(s_drag_timer) {lv_timer_delete(s_drag_timer);s_drag_timer=NULL;}
     if(s_drag_preview) {lv_obj_delete(s_drag_preview);s_drag_preview=NULL;}
+    if(s_drop_preview) {lv_obj_delete(s_drop_preview);s_drop_preview=NULL;}
+    if(s_grid_hint_layer) {
+        lv_obj_delete(s_grid_hint_layer);s_grid_hint_layer=NULL;
+        lv_obj_set_height(s_graph_node_layer,pedal_grid_canvas_height(&s_pedal_grid,false));
+        lv_obj_update_layout(s_graph_workspace);
+        lv_obj_scroll_to_y(s_graph_workspace,lv_obj_get_scroll_y(s_graph_workspace),LV_ANIM_OFF);
+    }
     s_node_gesture.active=false;s_drag_input=NULL;
     if(s_graph_workspace) lv_obj_add_flag(s_graph_workspace,LV_OBJ_FLAG_SCROLLABLE);
 }
@@ -1179,20 +1226,71 @@ static void drag_tick(lv_timer_t *timer)
     (void)timer;
     if(!s_drag_input || !s_node_gesture.active || s_drag_index>=s_pedal_node_count) return;
     lv_point_t point;lv_indev_get_point(s_drag_input,&point);
-    const unsigned action=pedal_gesture_update(&s_node_gesture,lv_tick_get(),point.x,point.y);
-    if(!s_node_gesture.cancelled && lv_tick_get()-s_node_gesture.started>=1000)
-        lv_obj_remove_flag(s_graph_workspace,LV_OBJ_FLAG_SCROLLABLE);
+    const uint32_t now=ui_wall_ms();
+    const unsigned action=pedal_gesture_update(&s_node_gesture,now,point.x,point.y);
+    if(!s_node_gesture.cancelled && !s_drag_ready && now-s_node_gesture.started>=PEDAL_DRAG_HOLD_MS) {
+        s_drag_ready=true;
+        /* Outline is outside the box: no layout/jack/bounds changes. */
+        lv_obj_set_style_outline_color(s_node_cards[s_drag_index],color(0xffffff),0);
+        lv_obj_set_style_outline_pad(s_node_cards[s_drag_index],3,0);
+        lv_obj_set_style_outline_width(s_node_cards[s_drag_index],2,0);
+        ESP_LOGI(TAG,"pedal hold: ready wall=%lu ms lvgl=%lu ms",
+            (unsigned long)(now-s_node_gesture.started),
+            (unsigned long)(lv_tick_get()-s_gesture_tick_start));
+    }
     if(action==PEDAL_GESTURE_DRAG) {
         if(!s_drag_preview) {
+            ESP_LOGI(TAG,"pedal hold: drag wall=%lu ms",(unsigned long)(now-s_node_gesture.started));
             const SeedFxCatalogEntry *fx=effect_info(s_pedal_nodes[s_drag_index].type);
             const int width=pedal_layout_node_width(fx->effect_type);
-            s_drag_preview=make_panel(lv_layer_top(),0,0,width,210,0x263950,0xffffff,12);
+            const int height=pedal_grid_canvas_height(&s_pedal_grid,true);
+            lv_obj_set_height(s_graph_node_layer,height);
+            s_grid_hint_layer=make_panel(s_graph_node_layer,0,0,1024,height,0,0,0);
+            lv_obj_set_style_bg_opa(s_grid_hint_layer,LV_OPA_TRANSP,0);
+            lv_obj_set_style_border_width(s_grid_hint_layer,0,0);
+            lv_obj_remove_flag(s_grid_hint_layer,LV_OBJ_FLAG_CLICKABLE);
+            lv_obj_move_background(s_grid_hint_layer);
+            unsigned cells=(pedal_grid_used_rows(&s_pedal_grid)+1)*PEDAL_GRID_COLUMNS;
+            if(cells>PEDAL_GRID_CELLS) cells=PEDAL_GRID_CELLS;
+            for(unsigned cell=0;cell<cells;++cell) {
+                lv_obj_t *slot=make_panel(s_grid_hint_layer,pedal_grid_x(cell),pedal_grid_y(cell),
+                    PEDAL_CARD_WIDTH,PEDAL_CARD_HEIGHT,0x152332,0x34485b,PEDAL_CARD_RADIUS);
+                lv_obj_set_style_bg_opa(slot,40,0);
+                lv_obj_remove_flag(slot,LV_OBJ_FLAG_CLICKABLE);
+            }
+            s_drag_preview=make_panel(lv_layer_top(),0,0,width,PEDAL_CARD_HEIGHT,
+                effect_fill(fx,true),0xffffff,PEDAL_CARD_RADIUS);
             lv_obj_set_style_bg_opa(s_drag_preview,220,0);
             make_label(s_drag_preview,8,80,width-16,50,fx->name,&lv_font_montserrat_14,0xffffff,LV_TEXT_ALIGN_CENTER);
             lv_obj_remove_flag(s_drag_preview,LV_OBJ_FLAG_CLICKABLE);
+            s_drop_preview=make_panel(s_graph_node_layer,0,0,width,PEDAL_CARD_HEIGHT,
+                0x48e0a8,0x9cf4d4,PEDAL_CARD_RADIUS);
+            lv_obj_set_style_bg_opa(s_drop_preview,40,0);
+            lv_obj_set_style_border_width(s_drop_preview,2,0);
+            lv_obj_remove_flag(s_drop_preview,LV_OBJ_FLAG_CLICKABLE);
         }
-        lv_obj_set_pos(s_drag_preview,point.x-lv_obj_get_width(s_drag_preview)/2,point.y-105);
+        lv_area_t viewport;lv_obj_get_coords(s_graph_workspace,&viewport);
+        if(point.x>=PEDAL_GRID_LEFT && point.x<PEDAL_GRID_LEFT+PEDAL_GRID_COLUMNS*PEDAL_GRID_PITCH_X
+            && point.y>=viewport.y1 && point.y<=viewport.y2) {
+            if(point.y<viewport.y1+28) lv_obj_scroll_by_bounded(s_graph_workspace,0,8,LV_ANIM_OFF);
+            else if(point.y>viewport.y2-28) lv_obj_scroll_by_bounded(s_graph_workspace,0,-8,LV_ANIM_OFF);
+            lv_obj_update_layout(s_graph_workspace);
+        }
+        const uint16_t id=s_pedal_nodes[s_drag_index].id;
+        const int cell=pedal_grid_drop_cell(&s_pedal_grid,id,drop_cell_for_point(point));
+        if(cell>=0) {
+            const bool valid=pedal_grid_can_move(&s_pedal_grid,id,cell);
+            const int width=pedal_layout_node_width(s_pedal_nodes[s_drag_index].type);
+            lv_obj_set_width(s_drop_preview,valid?width:PEDAL_CARD_WIDTH);
+            lv_obj_set_style_border_color(s_drop_preview,color(valid?0x9cf4d4:0xf05b68),0);
+            lv_obj_set_style_bg_color(s_drop_preview,color(valid?0x48e0a8:0xf05b68),0);
+            lv_obj_set_pos(s_drop_preview,pedal_grid_x(cell),pedal_grid_y(cell));
+            lv_obj_remove_flag(s_drop_preview,LV_OBJ_FLAG_HIDDEN);
+        } else lv_obj_add_flag(s_drop_preview,LV_OBJ_FLAG_HIDDEN);
+        lv_obj_set_pos(s_drag_preview,point.x-lv_obj_get_width(s_drag_preview)/2,point.y-PEDAL_CARD_HEIGHT/2);
     } else if(action==PEDAL_GESTURE_MENU) {
+        ESP_LOGI(TAG,"pedal hold: menu wall=%lu ms",(unsigned long)(now-s_node_gesture.started));
+        lv_obj_set_style_outline_width(s_node_cards[s_drag_index],0,0);
         s_graph_target_index=s_drag_index;
         lv_label_set_text(s_node_context_title,effect_info(s_pedal_nodes[s_drag_index].type)->name);
         lv_obj_clear_flag(s_node_context,LV_OBJ_FLAG_HIDDEN);
@@ -1208,34 +1306,20 @@ static void graph_node_pointer_event(lv_event_t *event)
     if(code==LV_EVENT_PRESSED) {
         cancel_node_gesture();
         s_drag_input=lv_indev_active();if(!s_drag_input) return;
-        lv_point_t point;lv_indev_get_point(s_drag_input,&point);
         lv_area_t area;lv_obj_get_coords(s_node_cards[index],&area);
-        s_drag_index=index;pedal_gesture_start(&s_node_gesture,lv_tick_get(),area.x1,area.y1,area.x2,area.y2);
+        s_drag_index=index;pedal_gesture_start(&s_node_gesture,ui_wall_ms(),area.x1,area.y1,area.x2,area.y2);
+        s_gesture_tick_start=lv_tick_get();s_drag_ready=false;
         /* Finger motion within the card remains a hold, not a scroll. Scroll
          * the empty board instead; keep the original card bounds stable. */
         lv_obj_remove_flag(s_graph_workspace,LV_OBJ_FLAG_SCROLLABLE);
         s_drag_timer=lv_timer_create(drag_tick,25,NULL);
     } else if(code==LV_EVENT_RELEASED && s_node_gesture.active && index==s_drag_index) {
         const bool click=!s_node_gesture.dragging && !s_node_gesture.menu && !s_node_gesture.cancelled
-            && lv_tick_get()-s_node_gesture.started<500;
+            && ui_wall_ms()-s_node_gesture.started<PEDAL_TAP_MAX_MS;
         bool changed=false;
         if(s_node_gesture.dragging && s_drag_input) {
             lv_point_t point;lv_indev_get_point(s_drag_input,&point);
-            lv_area_t area;lv_obj_get_coords(s_graph_workspace,&area);
-            if(point.x>=area.x1 && point.x<=area.x2 && point.y>=area.y1 && point.y<=area.y2) {
-                unsigned nearest=index;int best=INT32_MAX;
-                for(unsigned n=0;n<s_pedal_node_count;++n) {
-                    lv_area_t card;lv_obj_get_coords(s_node_cards[n],&card);
-                    int dx=point.x-(card.x1+card.x2)/2,dy=point.y-(card.y1+card.y2)/2;
-                    int distance=dx*dx+dy*dy;
-                    if(distance<best) {best=distance;nearest=n;}
-                }
-                if(nearest!=index) {
-                    const unsigned a=s_visual_slot[index],b=s_visual_slot[nearest];
-                    uint16_t id=s_visual_order[a];s_visual_order[a]=s_visual_order[b];s_visual_order[b]=id;
-                    changed=true;
-                }
-            }
+            changed=pedal_grid_move(&s_pedal_grid,s_pedal_nodes[index].id,drop_cell_for_point(point));
         }
         cancel_node_gesture();
         if(changed) render_pedal_nodes();
@@ -1264,6 +1348,7 @@ static void effect_selector_event(lv_event_t *event)
         for (uint8_t p = 0; p < effect->parameter_count; ++p)
             node->parameters[p] = effect->parameters[p].default_value;
         ++s_pedal_node_count;
+        if(s_add_cell>=0 && !s_pedal_grid.cells[s_add_cell]) s_pedal_grid.cells[s_add_cell]=node->id;
     } else if (s_graph_target_index < s_pedal_node_count) {
         if (!request_graph_edit(AUDIO_DASHBOARD_GRAPH_REPLACE,
                                 s_graph_target_index, type, 0U, 0.0f)) return;
@@ -1324,7 +1409,7 @@ static void refresh_node_edit(void)
     lv_obj_clean(s_node_edit_body);
     const pedal_node_t *node = &s_pedal_nodes[s_graph_target_index];
     const SeedFxCatalogEntry *fx = effect_info(node->type);
-    const bool wide=pedal_layout_node_width(node->type)>104;
+    const bool wide=node->type==SEEDFX_EFFECT_CABINET_SIM;
     const int width=wide?680:392,height=wide?440:560;
     lv_obj_set_size(s_node_edit_body,width,height);
     lv_obj_set_pos(s_node_edit_body,(1024-width)/2,(600-height)/2);
@@ -1443,7 +1528,7 @@ static void refresh_patch_highlights(void)
         const SeedFxCatalogEntry *fx=effect_info(s_pedal_nodes[n].type);
         lv_obj_set_style_border_color(s_node_cards[n],color(selected?0xffffff:fx->color_rgb),0);
         lv_obj_set_style_border_width(s_node_cards[n],selected?3:2,0);
-        lv_obj_set_style_bg_color(s_node_cards[n],color(selected?0x263950:0x142333),0);
+        lv_obj_set_style_bg_color(s_node_cards[n],color(effect_fill(fx,selected)),0);
         for(unsigned out=0;out<2;++out) for(unsigned ch=0;ch<2;++ch)
             style_jack(s_node_jacks[n][out][ch],(pedal_jack_t){s_pedal_nodes[n].id,ch,out!=0});
     }
@@ -1659,6 +1744,7 @@ static void create_pedalboard(lv_obj_t *screen)
     s_graph_workspace = make_panel(s_pedalboard_page, 0, 104, 1024, 490,
                                    0x091522, 0x091522, 0);
     lv_obj_add_flag(s_graph_workspace,LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_remove_flag(s_graph_workspace,LV_OBJ_FLAG_SCROLL_ELASTIC);
     lv_obj_set_scroll_dir(s_graph_workspace,LV_DIR_VER);
     lv_obj_set_scrollbar_mode(s_graph_workspace,LV_SCROLLBAR_MODE_AUTO);
     s_graph_node_layer = make_panel(s_graph_workspace, 0, 0, 1024, 490,
@@ -1668,6 +1754,10 @@ static void create_pedalboard(lv_obj_t *screen)
     lv_obj_add_event_cb(s_graph_node_layer, graph_workspace_long_press_event,
                         LV_EVENT_LONG_PRESSED, NULL);
     lv_obj_add_event_cb(s_graph_node_layer,graph_workspace_click_event,LV_EVENT_SHORT_CLICKED,NULL);
+    create_compact_io_panel(s_pedalboard_page,&s_pedal_io[0],0);
+    create_compact_io_panel(s_pedalboard_page,&s_pedal_io[1],952);
+    lv_obj_set_y(s_pedal_io[0].card,104);lv_obj_set_y(s_pedal_io[1].card,104);
+    lv_obj_add_event_cb(s_graph_workspace,board_scroll_event,LV_EVENT_SCROLL,NULL);
     render_pedal_nodes();
     create_io_settings_overlay(s_pedalboard_page);
     create_graph_overlays(s_pedalboard_page);
@@ -2367,7 +2457,7 @@ static void update_pedal_meters(void)
         if(!v->channel_enabled[ch]) v->displayed[ch]=0;
         if(v->level[ch]) {
             lv_bar_set_value(v->level[ch],(int)v->displayed[ch],LV_ANIM_OFF);
-            lv_obj_set_style_bg_color(v->level[ch],color(target>97?0xf05b68:target>85?0xffce68:0x48e0a8),LV_PART_INDICATOR);
+            lv_obj_set_style_bg_color(v->level[ch],color(target>97?0xf05b68:target>85?0xffce68:pedal_physical_color(ch)),LV_PART_INDICATOR);
         }
     }
 }
@@ -2479,6 +2569,9 @@ esp_err_t audio_dashboard_init(void)
         return ESP_ERR_TIMEOUT;
     }
     create_dashboard();
+    s_clock_probe_wall=ui_wall_ms();s_clock_probe_tick=lv_tick_get();
+    lv_timer_t *clock_probe=lv_timer_create(clock_probe_timer,5000,NULL);
+    if(clock_probe) lv_timer_set_repeat_count(clock_probe,1);
     if (lv_timer_create(touch_poll_timer, 10, touch) == NULL) {
         bsp_display_unlock();
         return ESP_ERR_NO_MEM;

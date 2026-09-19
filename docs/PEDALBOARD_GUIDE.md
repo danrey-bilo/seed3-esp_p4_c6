@@ -47,8 +47,9 @@ both physical endpoint colors. Internal colors are UI state, not preset data.
 
 Parallel runs use separate tracks, with no reused overlapping horizontal
 lanes. Perpendicular crossings are allowed and are **not junctions**.
-For dense graphs the centre wiring corridor grows and the board becomes
-vertically scrollable. The top controls remain fixed; swipe within the board
+Wires run through row gutters and outside buses, clear of wide pedal bodies.
+The field grows with occupied rows and becomes vertically scrollable.
+The top controls and physical I/O remain fixed; swipe within the board
 to reach its lower rows. Swipe down from the top header to open the window menu.
 
 ## Parallel paths and independent channels
@@ -71,7 +72,8 @@ automatically compensated.
 Hold empty board space to open the effect categories, then select a category
 and a pedal. **Other** contains uncategorized/utility effects. **Back** returns
 to categories without losing the add/replace action. Added pedals start
-unconnected. Tap the **large top LED** directly on the card to toggle processing
+unconnected, at the selected cell when their footprint fits; otherwise the
+first fitting free space is used. Tap the **large top LED** directly on the card to toggle processing
 without opening its editor. The LED is green when enabled and red in bypass.
 
 Tap the pedal body to open its controls:
@@ -82,22 +84,43 @@ Turn the knobs, then tap **Done** or anywhere **outside the editor card**.
 Both close the editor; edits already made remain applied. Touching the card
 itself or its knobs does not dismiss it.
 
-Hold a pedal **2 seconds with the finger inside its body** for **EDIT**, **REPLACE**, **INFORMATION** or
+Hold a pedal **1 second with the finger inside its body** for **EDIT**, **REPLACE**, **INFORMATION** or
 **DELETE**. Information contains the CPU estimate and profile details.
 Deleting a pedal removes only its own wires; neighbors are not reconnected.
 
-Hold **1 second, then move outside the original card bounds** to reposition
+Hold **0.5 seconds, then move outside the original card bounds** to reposition
 a pedal. Motion inside the card still counts as holding. A preview follows your
-finger; releasing it swaps visual slots with the nearest card. The grid snaps
-cards into nonoverlapping positions and reroutes the drawing. **Audio wiring,
+finger, while a highlighted cell shows the drop target. Release to place it in
+that cell, including empty cells below or beside other pedals. An occupied
+target swaps the two cards **only if both footprints fit**. A red target marks
+an invalid placement, which is cancelled on release. Wide cards cannot cross
+a row boundary or overlap a third card. The five-column grid snaps cards into
+nonoverlapping positions and reroutes the drawing. **Audio wiring,
 DSP order and node IDs do not change.** Releasing outside the board cancels.
-Leaving the card before 1 second cancels the hold; do not stay inside past
-2 seconds if you want to move. Scroll by swiping **empty board space**.
+A white outline appears at 0.5 seconds to show the card is ready to move.
+Leaving the card before 0.5 seconds cancels the hold; do not stay inside past
+1 second if you want to move. Scroll by swiping **empty board space**.
+The grid is **invisible at rest**. During a drag, guides cover the occupied
+rows and **one additional row** below, up to the eight-row capacity. Hold near
+the top/bottom edge to auto-scroll. Placing a pedal in the extra row expands
+the board; the next drag offers one more row, not all remaining rows at once.
 Positions are RAM-only and reset on reboot.
 
-No instance-number labels or separate ON/BYPASS buttons are shown. Normal
-cards are 104×210; Cabinet Sim is 208×210. Wide cards reduce the number of
-columns automatically, adding scrollable rows when necessary.
+![Free grid placement, native LVGL render with simulated levels](assets/pedalboard-grid.png)
+
+![Grid visible only during a drag, native LVGL render](assets/pedalboard-grid-drag.png)
+
+Cards are **104×198 rounded rectangles**. Cabinet Sim spans **two adjacent
+cells** with a 264×198 body; its shape, height and corner radius stay consistent. Their
+flat color-tinted fills distinguish effects from the dark board. No shadows,
+textures, instance-number labels or separate ON/BYPASS buttons are used.
+The 40 view cells do not change the limit of **12 active DSP nodes**.
+
+**Only the pedal field scrolls.** IN1/IN2, OUT1/OUT2 and their live meters
+stay fixed at the screen edges. Cables stay attached to those fixed sockets;
+scrolling updates their geometry without recreating the cable objects.
+
+![Scrolled field with fixed live I/O, native LVGL render](assets/pedalboard-grid-scrolled.png)
 
 ![Wide Cabinet Sim editor, native LVGL render](assets/pedalboard-cabinet.png)
 
@@ -121,7 +144,7 @@ The four vertical bars next to the physical sockets display peaks from Seed3:
 
 - left: ADC channels 1 and 2, before local effects;
 - right: final DAC channels 1 and 2, after effects and the existing USB mix;
-- a 60 dB display range, green normally, yellow near the top and red at high level.
+- a 60 dB display range, channel 1 green / channel 2 blue, yellow near the top and red at high level.
 
 These are physical levels, not a duplicate of the USB monitor. They work with
 no PC stream. Seed sends CRC-protected telemetry over UART at up to 25 Hz;
@@ -165,7 +188,8 @@ memory details: [SeedFX reference (RU)](SEEDFX_NODES_RU.md).
 | `p4_audio_dashboard/pedal_layout.*` | Bounded orthogonal router, separate parallel tracks and adaptive canvas height |
 | `p4_audio_dashboard/pedalboard_widgets.*` | Rotary controls and pedal-specific widgets |
 | `p4_audio_dashboard/pedal_categories.h` | Categories and guaranteed Other fallback |
-| `p4_audio_dashboard/pedal_gesture.h` | 1 s + exit card to drag / 2 s inside card for context |
+| `p4_audio_dashboard/pedal_gesture.h` | 0.5 s + exit card to drag / 1 s inside card for context |
+| `p4_audio_dashboard/pedal_grid.*` | Stable-ID cell placement, holes, move/swap and hit testing |
 | `p4_audio_dashboard/wifi_view.*` | Network list, keyboard and connection view |
 | `p4_wifi_settings` | Serialized nonblocking requests, ESP-Hosted and NVS credentials |
 | `protocol/seedfx_routing.h` | Topology validation, stable node IDs and connection edits |
